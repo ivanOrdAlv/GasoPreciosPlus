@@ -47,7 +47,7 @@ export default function GasoPrecios() {
     { id:"23",nombre:"Gasolina 95 E10" },
     { id: "24", nombre: "Gasolina 95 E25" },
     {id:"25", nombre:"Gasolina 95 E85"},
-    {id:"20", nombre:"Gasolina 95 E5 Premim"},
+    {id:"20", nombre:"Gasolina 95 E5 Premium"},
     { id: "3", nombre: "Gasolina 98 E5" },
     {id:"21", nombre: "Gasolina 98 E10"},
     { id: "4", nombre: "Gasóleo A Habitual" },
@@ -56,7 +56,7 @@ export default function GasoPrecios() {
     {id: "7", nombre: "Gasóleo C"},
     { id: "16", nombre: "Bioetanol" },
     {id: "8", nombre: "Biodiésel"},
-    {id: "17", nombre: "GLP"},
+    {id: "17", nombre: "Gases Licuados del Petróleo(GLP)"},
     { id: "18", nombre: "Gas Natural Comprimido(GNC)" },
     {id:"19", nombre:"Gas Natural Licuado(GNL)"},
     {id:"22", nombre:"Hidrógeno"},
@@ -339,8 +339,9 @@ export default function GasoPrecios() {
               <h3 className="text-lg font-semibold mb-2">Provincia, municipio y producto</h3>
               <p className="text-muted-foreground max-w-md">
                 Selecciona provincia (Badajoz o Cáceres), un municipio y el carburante para ver precios en tiempo real.
-                Si no puede visualizar nada, es debido a que no hay ninguna gasolinera en el municipio seleccionado.
+                
               </p>
+              <p className="text-muted-foreground max-w-md">Si no puede visualizar nada, es debido a que no hay ninguna gasolinera en el municipio seleccionado.</p>
             </CardContent>
           </Card>
         )}
@@ -361,7 +362,7 @@ export default function GasoPrecios() {
             </a>
           </p>
 
-          <p>Creado por: <a href="https://github.com/ivanOrdAlv">Iván Ordóñez Álvarez</a>, en Mérida, Extremadura</p>
+          <p>Creado por: <a href="https://github.com/ivanOrdAlv"><b>Iván Ordóñez Álvarez</b></a>, en Mérida, Extremadura</p>
           <p className="mt-2 text-xs">
             &copy; 2026<span className="align-super text-xs ml-1">&reg;</span>
           </p>
