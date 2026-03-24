@@ -292,6 +292,9 @@ export default function GasoPrecios() {
                             <MapPin className="inline h-3 w-3 mr-1" />
                             {gasolinera.direccion}
                           </p>
+                          <p className="text-sm opacity-90">
+                            {gasolinera.horario}
+                          </p>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -322,7 +325,8 @@ export default function GasoPrecios() {
               <Fuel className="h-16 w-16 text-muted-foreground/50 mb-4" />
               <h3 className="text-lg font-semibold mb-2">Provincia, municipio y producto</h3>
               <p className="text-muted-foreground max-w-md">
-                Selecciona provincia (Badajoz o Cáceres), un municipio y el carburante para ver precios en tiempo real
+                Selecciona provincia (Badajoz o Cáceres), un municipio y el carburante para ver precios en tiempo real.
+                Si no puede visualizar nada, es debido a que no hay ninguna gasolinera en el municipio seleccionado.
               </p>
             </CardContent>
           </Card>
@@ -342,6 +346,11 @@ export default function GasoPrecios() {
             >
               Ministerio de Industria, Comercio y Turismo
             </a>
+          </p>
+
+          <p>Creado por: <a href="https://github.com/ivanOrdAlv">Iván Ordóñez Álvarez</a>, en Mérida, Extremadura</p>
+          <p className="mt-2 text-xs">
+            &copy; 2026<span className="align-super text-xs ml-1">&reg;</span>
           </p>
         </div>
       </footer>
