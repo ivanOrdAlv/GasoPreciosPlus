@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+# Use npm + package-lock.json on Vercel; avoid pnpm lockfile drift
+pnpm-lock.yaml
 
 # next.js
 /.next/
