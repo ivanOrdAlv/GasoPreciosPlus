@@ -44,12 +44,25 @@ export default function GasoPrecios() {
   }
   const productos = [
     { id: "1", nombre: "Gasolina 95 E5" },
-    { id: "3", nombre: "Gasóleo A" },
-    { id: "4", nombre: "Nuevo Gasóleo A" },
-    { id: "5", nombre: "Gasóleo B" },
-    { id: "6", nombre: "Gasóleo Premium" },
-    { id: "17", nombre: "Bioetanol" },
-    { id: "20", nombre: "GLP" },
+    { id:"23",nombre:"Gasolina 95 E10" },
+    { id: "24", nombre: "Gasolina 95 E25" },
+    {id:"25", nombre:"Gasolina 95 E85"},
+    {id:"20", nombre:"Gasolina 95 E5 Premim"},
+    { id: "3", nombre: "Gasolina 98 E5" },
+    {id:"21", nombre: "Gasolina 98 E10"},
+    { id: "4", nombre: "Gasóleo A Habitual" },
+    { id: "5", nombre: "Gasóleo Premium" },
+    { id: "6", nombre: "Gasóleo B" },
+    {id: "7", nombre: "Gasóleo C"},
+    { id: "16", nombre: "Bioetanol" },
+    {id: "8", nombre: "Biodiésel"},
+    {id: "17", nombre: "GLP"},
+    { id: "18", nombre: "Gas Natural Comprimido(GNC)" },
+    {id:"19", nombre:"Gas Natural Licuado(GNL)"},
+    {id:"22", nombre:"Hidrógeno"},
+    {id:"26", nombre:"AdBlue"},
+    {id: "27", nombre:"Diésel Renovable"},
+    {id:"28", nombre:"Gasolina renovable"}
   ]
 
   const buscarGasolineras = async () => {
