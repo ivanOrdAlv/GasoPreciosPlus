@@ -136,11 +136,11 @@ export default function GasoPrecios() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Fuel className="h-6 w-6" />
+              <img src="/img/gaslylogo.png" alt="Logo de Gas.ly" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">GasoPrecios</h1>
-              <p className="text-sm text-muted-foreground">Compara precios en Badajoz y Cáceres</p>
+              <h1 className="text-2xl font-bold tracking-tight">Gas.ly</h1>
+              <p className="text-sm text-muted-foreground">Compara precios de gasolineras en toda <b>Extremadura</b></p>
             </div>
           </div>
         </div>
@@ -156,7 +156,7 @@ export default function GasoPrecios() {
               Provincia, municipio y producto
             </CardTitle>
             <CardDescription>
-              Elige provincia, municipio y tipo de carburante (los IDs del ministerio son distintos por municipio)
+              Elige provincia, municipio y tipo de carburante (los IDs del ministerio son distintos por municipio y se actualizan cada 30 minutos)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -364,7 +364,7 @@ export default function GasoPrecios() {
 
           <p>Creado por: <a href="https://github.com/ivanOrdAlv"><b>Iván Ordóñez Álvarez</b></a>, en Mérida, Extremadura</p>
           <p className="mt-2 text-xs">
-            &copy; 2026<span className="align-super text-xs ml-1">&reg;</span>
+           Gas.ly(GasoPrecios) &copy; 2026<span className="align-super text-xs ml-1">&reg;</span>
           </p>
         </div>
       </footer>
