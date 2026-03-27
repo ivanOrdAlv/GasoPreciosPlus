@@ -31,6 +31,7 @@ type CombustibleDisponible = {
 }
 
 interface GasolineraMunicipio {
+  id: string
   direccion: string
   nombre: string
   latitud: string
@@ -185,6 +186,8 @@ export default function GasoPrecios() {
       const selectedByKey: Record<string, string> = {}
 
       data.ListaEESSPrecio?.forEach((eess: any) => {
+        const idRaw = eess["IDEESS"] ?? eess["IDEEESS"] ?? eess["IdEESS"] ?? eess["ID"] ?? eess["Id"]
+        const id = idRaw != null && `${idRaw}`.trim() ? `${idRaw}`.trim() : ""
         const direccion = eess["Dirección"]
         const nombre = eess["Rótulo"] || "Sin nombre"
         const latitud = eess["Latitud"]
@@ -200,11 +203,11 @@ export default function GasoPrecios() {
           })
           .filter(Boolean) as CombustibleDisponible[]
 
-        const key = `${nombre}__${direccion}__${latitud}__${longitud}`
+        const key = id || `${nombre}__${direccion}__${latitud}__${longitud}`
         if (combustibles.length === 0) return
 
         selectedByKey[key] = combustibles[0].id
-        lista.push({ direccion, nombre, latitud, longitud, horario, combustibles })
+        lista.push({ id: key, direccion, nombre, latitud, longitud, horario, combustibles })
       })
 
       lista.sort((a, b) => a.nombre.localeCompare(b.nombre))
@@ -224,7 +227,7 @@ export default function GasoPrecios() {
   const gasolinerasMunicipioOrdenadas = useMemo(() => {
     const enriched = gasolinerasMunicipio
       .map((g) => {
-        const key = `${g.nombre}__${g.direccion}__${g.latitud}__${g.longitud}`
+        const key = g.id
         const selectedId = combustibleSeleccionadoPorGasolinera[key] ?? g.combustibles[0]?.id ?? ""
         const selected = g.combustibles.find((c) => c.id === selectedId) ?? null
         return selected ? { g, key, selected } : null
