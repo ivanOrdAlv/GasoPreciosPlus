@@ -46,9 +46,6 @@ export default function GasoPrecios() {
   const [selectedProducto, setSelectedProducto] = useState<string>("1")
   const [gasolineras, setGasolineras] = useState<Gasolinera[]>([])
   const [gasolinerasMunicipio, setGasolinerasMunicipio] = useState<GasolineraMunicipio[]>([])
-  const [combustibleSeleccionadoPorGasolinera, setCombustibleSeleccionadoPorGasolinera] = useState<
-    Record<string, string>
-  >({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -183,7 +180,6 @@ export default function GasoPrecios() {
 
       const data = await response.json()
       const lista: GasolineraMunicipio[] = []
-      const selectedByKey: Record<string, string> = {}
 
       data.ListaEESSPrecio?.forEach((eess: any) => {
         const idRaw = eess["IDEESS"] ?? eess["IDEEESS"] ?? eess["IdEESS"] ?? eess["ID"] ?? eess["Id"]
@@ -206,19 +202,16 @@ export default function GasoPrecios() {
         const key = id || `${nombre}__${direccion}__${latitud}__${longitud}`
         if (combustibles.length === 0) return
 
-        selectedByKey[key] = combustibles[0].id
         lista.push({ id: key, direccion, nombre, latitud, longitud, horario, combustibles })
       })
 
       lista.sort((a, b) => a.nombre.localeCompare(b.nombre))
       setGasolinerasMunicipio(lista)
-      setCombustibleSeleccionadoPorGasolinera(selectedByKey)
       setGasolineras([])
     } catch (err) {
       setError("No se pudieron cargar las gasolineras. Intenta de nuevo.")
       setGasolineras([])
       setGasolinerasMunicipio([])
-      setCombustibleSeleccionadoPorGasolinera({})
     } finally {
       setLoading(false)
     }
@@ -228,15 +221,14 @@ export default function GasoPrecios() {
     const enriched = gasolinerasMunicipio
       .map((g) => {
         const key = g.id
-        const selectedId = combustibleSeleccionadoPorGasolinera[key] ?? g.combustibles[0]?.id ?? ""
-        const selected = g.combustibles.find((c) => c.id === selectedId) ?? null
+        const selected = g.combustibles.find((c) => c.id === selectedProducto) ?? null
         return selected ? { g, key, selected } : null
       })
       .filter(Boolean) as { g: GasolineraMunicipio; key: string; selected: CombustibleDisponible }[]
 
     enriched.sort((a, b) => a.selected.precio - b.selected.precio)
     return enriched
-  }, [gasolinerasMunicipio, combustibleSeleccionadoPorGasolinera])
+  }, [gasolinerasMunicipio, selectedProducto])
 
   const getPriceColor = (precio: number, index: number, total: number) => {
     if (index === 0) return "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
@@ -355,11 +347,11 @@ export default function GasoPrecios() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Fuel className="h-5 w-5" />
-              Solo municipio (ver todos los combustibles)
+              Provincia, municipio y producto
             </CardTitle>
             <CardDescription>
-              Carga todas las gasolineras del municipio y, dentro de cada una, elige en un desplegable qué combustible
-              quieres ver.
+              Elige provincia, municipio y carburante. En cada gasolinera verás los productos disponibles y se
+              ordena por el precio del producto seleccionado.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -385,10 +377,23 @@ export default function GasoPrecios() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={selectedProducto} onValueChange={setSelectedProducto}>
+                <SelectTrigger className="w-full sm:max-w-lg">
+                  <SelectValue placeholder="Elige un producto..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {productos.map((producto) => (
+                    <SelectItem key={producto.id} value={producto.id}>
+                      {producto.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button
                   onClick={buscarGasolinerasMunicipio}
-                  disabled={!selectedMunicipio || loading}
+                  disabled={!selectedMunicipio || !selectedProducto || loading}
                   size="lg"
                   className="sm:w-auto"
                 >
@@ -400,7 +405,7 @@ export default function GasoPrecios() {
                   ) : (
                     <>
                       <Fuel className="mr-2 h-4 w-4" />
-                      Ver todas las gasolineras
+                      Buscar precios
                     </>
                   )}
                 </Button>
@@ -616,27 +621,20 @@ export default function GasoPrecios() {
                           </p>
                           <p className="text-sm opacity-90">{g.horario}</p>
 
-                          <div className="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
-                            <Select
-                              value={combustibleSeleccionadoPorGasolinera[key] ?? selected.id}
-                              onValueChange={(v) =>
-                                setCombustibleSeleccionadoPorGasolinera((prev) => ({ ...prev, [key]: v }))
-                              }
-                            >
-                              <SelectTrigger className="w-full sm:max-w-sm">
-                                <SelectValue placeholder="Elige un combustible..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {g.combustibles.map((c) => (
-                                  <SelectItem key={`${key}__${c.id}`} value={c.id}>
-                                    {c.nombre}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-
-                            <div className="text-sm text-muted-foreground">
-                              <span className="font-medium text-foreground">{selected.precio.toFixed(3)}€</span> / litro
+                          <div className="mt-3">
+                            <p className="text-xs text-muted-foreground mb-2">Combustibles disponibles</p>
+                            <div className="space-y-1">
+                              {g.combustibles.map((c) => (
+                                <div
+                                  key={`${key}__${c.id}`}
+                                  className={`flex items-center justify-between text-xs ${
+                                    c.id === selected.id ? "text-foreground font-medium" : "text-muted-foreground"
+                                  }`}
+                                >
+                                  <span className="truncate pr-3">{c.nombre}</span>
+                                  <span>{c.precio.toFixed(3)}€</span>
+                                </div>
+                              ))}
                             </div>
                           </div>
 
@@ -664,16 +662,40 @@ export default function GasoPrecios() {
         )}
 
         {/* Empty State */}
-        {!loading && gasolineras.length === 0 && gasolinerasMunicipioOrdenadas.length === 0 && !error && (
-           <Card className="border-dashed border-2">
+        {!loading && gasolinerasMunicipioOrdenadas.length === 0 && !error && (
+          <Card className="border-dashed border-2">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <Fuel className="h-16 w-16 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Provincia, municipio y producto</h3>
-              <p className="text-muted-foreground max-w-md">
-                Selecciona provincia (Badajoz o Cáceres), un municipio y el carburante para ver precios en tiempo real.
-                
-              </p>
-              <p className="text-muted-foreground max-w-md">Si no puede visualizar nada, es debido a que no hay ninguna gasolinera en el municipio seleccionado.</p>
+
+              {gasolinerasMunicipio.length === 0 ? (
+                <>
+                  <h3 className="text-lg font-semibold mb-2">Busca precios por municipio</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    Elige provincia, municipio y producto para ver las gasolineras disponibles en tiempo real.
+                  </p>
+                </>
+              ) : (
+                <>
+                  {(() => {
+                    const municipioNombre =
+                      Object.entries(MUNICIPIOS_POR_PROVINCIA[selectedProvincia]).find(([, id]) => id.toString() === selectedMunicipio)?.[0] ??
+                      ""
+                    const productoNombre = productos.find((p) => p.id === selectedProducto)?.nombre ?? ""
+                    return (
+                      <>
+                        <h3 className="text-lg font-semibold mb-2">Sin gasolineras con ese combustible</h3>
+                        <p className="text-muted-foreground max-w-md">
+                          En <b>{municipioNombre || "el municipio seleccionado"}</b> no encontramos gasolineras con{" "}
+                          <b>{productoNombre}</b>.
+                        </p>
+                        <p className="text-muted-foreground max-w-md mt-2">
+                          Prueba con otro producto para ver precios.
+                        </p>
+                      </>
+                    )
+                  })()}
+                </>
+              )}
             </CardContent>
           </Card>
         )}
