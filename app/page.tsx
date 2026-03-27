@@ -251,8 +251,8 @@ export default function GasoPrecios() {
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-              <img src="https://raw.githubusercontent.com/ivanOrdAlv/GasoPreciosPlus/refs/heads/main/img/gaslylogo.png" alt="Logo de Gas.ly" width={70} height={70} style={{ maxWidth: "75px", maxHeight: "75px" }} />
+            <div className="flex h-18 w-18 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+              <img src="https://raw.githubusercontent.com/ivanOrdAlv/GasoPreciosPlus/refs/heads/main/img/gaslylogo.png" alt="Logo de Gas.ly" width={78} height={78} style={{ maxWidth: "80px", maxHeight: "80px" }} />
             </div>
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Gas.ly</h1>
