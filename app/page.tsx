@@ -272,7 +272,14 @@ export default function GasoPrecios() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {/* Search Card */}
+        {/*
+          =========================
+          LEGACY (comentado a propósito)
+          Búsqueda por: provincia + municipio + producto.
+          Motivo: desactivar este flujo para evitar interferencias con el modo "solo municipio".
+          =========================
+        */}
+        {/*
         <Card className="mb-8 border-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -341,6 +348,7 @@ export default function GasoPrecios() {
             </div>
           </CardContent>
         </Card>
+        */}
 
         {/* Extra: All fuels per station (municipio) */}
         <Card className="mb-8 border-2">
@@ -355,25 +363,48 @@ export default function GasoPrecios() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Button
-                onClick={buscarGasolinerasMunicipio}
-                disabled={!selectedMunicipio || loading}
-                size="lg"
-                className="sm:w-auto"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Cargando...
-                  </>
-                ) : (
-                  <>
-                    <Fuel className="mr-2 h-4 w-4" />
-                    Ver todas las gasolineras
-                  </>
-                )}
-              </Button>
+            <div className="flex flex-col gap-4">
+              <Select value={selectedProvincia} onValueChange={(v) => onProvinciaChange(v as ProvinciaId)}>
+                <SelectTrigger className="w-full sm:max-w-xs">
+                  <SelectValue placeholder="Elige una provincia..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="badajoz">Badajoz</SelectItem>
+                  <SelectItem value="caceres">Cáceres</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={selectedMunicipio} onValueChange={setSelectedMunicipio}>
+                <SelectTrigger className="w-full sm:max-w-lg">
+                  <SelectValue placeholder="Elige un municipio..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {municipios.map(([nombre, id]) => (
+                    <SelectItem key={`${selectedProvincia}-${id}`} value={id.toString()}>
+                      {nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button
+                  onClick={buscarGasolinerasMunicipio}
+                  disabled={!selectedMunicipio || loading}
+                  size="lg"
+                  className="sm:w-auto"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Cargando...
+                    </>
+                  ) : (
+                    <>
+                      <Fuel className="mr-2 h-4 w-4" />
+                      Ver todas las gasolineras
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -387,10 +418,15 @@ export default function GasoPrecios() {
           </Card>
         )}
 
-        {/* Results */}
+        {/*
+          =========================
+          LEGACY (comentado a propósito)
+          Resultados del modo "municipio + producto".
+          =========================
+        */}
+        {/*
         {gasolineras.length > 0 && (
           <>
-            {/* Stats Cards */}
             <div className="grid gap-4 md:grid-cols-3 mb-8">
               <Card className="border-2 border-emerald-500/20 bg-emerald-500/5">
                 <CardHeader className="pb-3">
@@ -437,7 +473,6 @@ export default function GasoPrecios() {
               </Card>
             </div>
 
-            {/* List of Gas Stations */}
             <Card>
               <CardHeader>
                 <CardTitle>Todas las gasolineras</CardTitle>
@@ -465,9 +500,7 @@ export default function GasoPrecios() {
                             <MapPin className="inline h-3 w-3 mr-1" />
                             {gasolinera.direccion}
                           </p>
-                          <p className="text-sm opacity-90">
-                            {gasolinera.horario}
-                          </p>
+                          <p className="text-sm opacity-90">{gasolinera.horario}</p>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -490,6 +523,7 @@ export default function GasoPrecios() {
             </Card>
           </>
         )}
+        */}
 
         {gasolinerasMunicipioOrdenadas.length > 0 && (
           <>
@@ -631,7 +665,7 @@ export default function GasoPrecios() {
 
         {/* Empty State */}
         {!loading && gasolineras.length === 0 && gasolinerasMunicipioOrdenadas.length === 0 && !error && (
-          <Card className="border-dashed border-2">
+           <Card className="border-dashed border-2">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <Fuel className="h-16 w-16 text-muted-foreground/50 mb-4" />
               <h3 className="text-lg font-semibold mb-2">Provincia, municipio y producto</h3>
