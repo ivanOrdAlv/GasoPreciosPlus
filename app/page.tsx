@@ -201,18 +201,10 @@ export default function GasoPrecios() {
           .filter(Boolean) as CombustibleDisponible[]
 
         const key = `${nombre}__${direccion}__${latitud}__${longitud}`
-        if (combustibles.length > 0) {
-          selectedByKey[key] = combustibles[0].id
-        }
+        if (combustibles.length === 0) return
 
-        lista.push({
-          direccion,
-          nombre,
-          latitud,
-          longitud,
-          horario,
-          combustibles,
-        })
+        selectedByKey[key] = combustibles[0].id
+        lista.push({ direccion, nombre, latitud, longitud, horario, combustibles })
       })
 
       lista.sort((a, b) => a.nombre.localeCompare(b.nombre))
@@ -228,6 +220,20 @@ export default function GasoPrecios() {
       setLoading(false)
     }
   }
+
+  const gasolinerasMunicipioOrdenadas = useMemo(() => {
+    const enriched = gasolinerasMunicipio
+      .map((g) => {
+        const key = `${g.nombre}__${g.direccion}__${g.latitud}__${g.longitud}`
+        const selectedId = combustibleSeleccionadoPorGasolinera[key] ?? g.combustibles[0]?.id ?? ""
+        const selected = g.combustibles.find((c) => c.id === selectedId) ?? null
+        return selected ? { g, key, selected } : null
+      })
+      .filter(Boolean) as { g: GasolineraMunicipio; key: string; selected: CombustibleDisponible }[]
+
+    enriched.sort((a, b) => a.selected.precio - b.selected.precio)
+    return enriched
+  }, [gasolinerasMunicipio, combustibleSeleccionadoPorGasolinera])
 
   const getPriceColor = (precio: number, index: number, total: number) => {
     if (index === 0) return "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
@@ -482,24 +488,91 @@ export default function GasoPrecios() {
           </>
         )}
 
-        {gasolinerasMunicipio.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Gasolineras del municipio</CardTitle>
-              <CardDescription>Elige un combustible para ver su precio en cada estación</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {gasolinerasMunicipio.map((g, index) => {
-                  const key = `${g.nombre}__${g.direccion}__${g.latitud}__${g.longitud}`
-                  const selectedId = combustibleSeleccionadoPorGasolinera[key] ?? ""
-                  const selected = g.combustibles.find((c) => c.id === selectedId) ?? null
+        {gasolinerasMunicipioOrdenadas.length > 0 && (
+          <>
+            <div className="grid gap-4 md:grid-cols-3 mb-8">
+              <Card className="border-2 border-emerald-500/20 bg-emerald-500/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <TrendingDown className="h-4 w-4 text-emerald-600" />
+                    Más barata
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-400">
+                    {gasolinerasMunicipioOrdenadas[0].selected.precio.toFixed(3)}€
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                    {gasolinerasMunicipioOrdenadas[0].g.nombre} · {gasolinerasMunicipioOrdenadas[0].selected.nombre}
+                  </p>
+                </CardContent>
+              </Card>
 
-                  return (
-                    <div key={`${key}__${index}`} className="p-4 rounded-lg border-2 transition-all hover:shadow-md">
+              <Card className="border-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Precio medio</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold">
+                    {(
+                      gasolinerasMunicipioOrdenadas.reduce((acc, x) => acc + x.selected.precio, 0) /
+                      gasolinerasMunicipioOrdenadas.length
+                    ).toFixed(3)}
+                    €
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {gasolinerasMunicipioOrdenadas.length} gasolineras encontradas
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-rose-500/20 bg-rose-500/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-rose-600" />
+                    Más cara
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-rose-700 dark:text-rose-400">
+                    {gasolinerasMunicipioOrdenadas[gasolinerasMunicipioOrdenadas.length - 1].selected.precio.toFixed(
+                      3,
+                    )}
+                    €
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                    {gasolinerasMunicipioOrdenadas[gasolinerasMunicipioOrdenadas.length - 1].g.nombre} ·{" "}
+                    {gasolinerasMunicipioOrdenadas[gasolinerasMunicipioOrdenadas.length - 1].selected.nombre}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Gasolineras del municipio</CardTitle>
+                <CardDescription>Ordenadas de más barata a más cara (según el combustible seleccionado)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {gasolinerasMunicipioOrdenadas.map(({ g, key, selected }, index) => (
+                    <div
+                      key={`${key}__${index}`}
+                      className={`p-4 rounded-lg border-2 transition-all hover:shadow-md ${getPriceColor(
+                        selected.precio,
+                        index,
+                        gasolinerasMunicipioOrdenadas.length,
+                      )}`}
+                    >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate">{g.nombre}</h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            {index === 0 && <TrendingDown className="h-4 w-4 flex-shrink-0" />}
+                            {index === gasolinerasMunicipioOrdenadas.length - 1 && (
+                              <TrendingUp className="h-4 w-4 flex-shrink-0" />
+                            )}
+                            <h3 className="font-semibold truncate">{g.nombre}</h3>
+                          </div>
                           <p className="text-sm opacity-90">
                             <MapPin className="inline h-3 w-3 mr-1" />
                             {g.direccion}
@@ -508,20 +581,13 @@ export default function GasoPrecios() {
 
                           <div className="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
                             <Select
-                              value={selectedId}
+                              value={combustibleSeleccionadoPorGasolinera[key] ?? selected.id}
                               onValueChange={(v) =>
                                 setCombustibleSeleccionadoPorGasolinera((prev) => ({ ...prev, [key]: v }))
                               }
-                              disabled={g.combustibles.length === 0}
                             >
                               <SelectTrigger className="w-full sm:max-w-sm">
-                                <SelectValue
-                                  placeholder={
-                                    g.combustibles.length === 0
-                                      ? "Sin combustibles con precio"
-                                      : "Elige un combustible..."
-                                  }
-                                />
+                                <SelectValue placeholder="Elige un combustible..." />
                               </SelectTrigger>
                               <SelectContent>
                                 {g.combustibles.map((c) => (
@@ -533,14 +599,7 @@ export default function GasoPrecios() {
                             </Select>
 
                             <div className="text-sm text-muted-foreground">
-                              {selected ? (
-                                <>
-                                  <span className="font-medium text-foreground">{selected.precio.toFixed(3)}€</span>{" "}
-                                  / litro
-                                </>
-                              ) : (
-                                "—"
-                              )}
+                              <span className="font-medium text-foreground">{selected.precio.toFixed(3)}€</span> / litro
                             </div>
                           </div>
 
@@ -554,17 +613,21 @@ export default function GasoPrecios() {
                             Ver en Google Maps
                           </Button>
                         </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-2xl font-bold">{selected.precio.toFixed(3)}€</div>
+                          <div className="text-xs opacity-75">{selected.nombre}</div>
+                        </div>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </>
         )}
 
         {/* Empty State */}
-        {!loading && gasolineras.length === 0 && gasolinerasMunicipio.length === 0 && !error && (
+        {!loading && gasolineras.length === 0 && gasolinerasMunicipioOrdenadas.length === 0 && !error && (
           <Card className="border-dashed border-2">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <Fuel className="h-16 w-16 text-muted-foreground/50 mb-4" />
