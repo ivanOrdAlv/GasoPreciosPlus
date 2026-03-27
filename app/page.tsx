@@ -41,6 +41,8 @@ interface GasolineraMunicipio {
 }
 
 export default function GasoPrecios() {
+  const interactiveHover =
+    "transition-all duration-150 ease-out hover:translate-y-[-1px] hover:shadow-md focus-visible:translate-y-[-1px]"
   const [selectedProvincia, setSelectedProvincia] = useState<ProvinciaId>("badajoz")
   const [selectedMunicipio, setSelectedMunicipio] = useState<string>("")
   const [selectedProducto, setSelectedProducto] = useState<string>("1")
@@ -251,7 +253,7 @@ export default function GasoPrecios() {
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-18 w-18 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+            <div className="flex h-18 w-18 items-center justify-center rounded-2xl bg-[#16A34A] text-white shadow-sm transition-colors duration-150 hover:bg-[#22C55E]">
               <img src="https://raw.githubusercontent.com/ivanOrdAlv/GasoPreciosPlus/refs/heads/main/img/gaslylogo.png" alt="Logo de Gas.ly" width={92} height={92} style={{ maxWidth: "95px", maxHeight: "95px" }} />
             </div>
             <div>
@@ -357,7 +359,7 @@ export default function GasoPrecios() {
           <CardContent>
             <div className="flex flex-col gap-4">
               <Select value={selectedProvincia} onValueChange={(v) => onProvinciaChange(v as ProvinciaId)}>
-                <SelectTrigger className="w-full sm:max-w-xs">
+                <SelectTrigger className={`w-full sm:max-w-xs ${interactiveHover}`}>
                   <SelectValue placeholder="Elige una provincia..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -366,7 +368,7 @@ export default function GasoPrecios() {
                 </SelectContent>
               </Select>
               <Select value={selectedMunicipio} onValueChange={setSelectedMunicipio}>
-                <SelectTrigger className="w-full sm:max-w-lg">
+                <SelectTrigger className={`w-full sm:max-w-lg ${interactiveHover}`}>
                   <SelectValue placeholder="Elige un municipio..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -378,7 +380,7 @@ export default function GasoPrecios() {
                 </SelectContent>
               </Select>
               <Select value={selectedProducto} onValueChange={setSelectedProducto}>
-                <SelectTrigger className="w-full sm:max-w-lg">
+                <SelectTrigger className={`w-full sm:max-w-lg ${interactiveHover}`}>
                   <SelectValue placeholder="Elige un producto..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -395,7 +397,7 @@ export default function GasoPrecios() {
                   onClick={buscarGasolinerasMunicipio}
                   disabled={!selectedMunicipio || !selectedProducto || loading}
                   size="lg"
-                  className="sm:w-auto"
+                  className={`sm:w-auto bg-[#16A34A] text-white hover:bg-[#22C55E] ${interactiveHover}`}
                 >
                   {loading ? (
                     <>
