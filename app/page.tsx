@@ -24,11 +24,30 @@ interface Gasolinera {
   horario: string
 }
 
+type CombustibleDisponible = {
+  id: string
+  nombre: string
+  precio: number
+}
+
+interface GasolineraMunicipio {
+  direccion: string
+  nombre: string
+  latitud: string
+  longitud: string
+  horario: string
+  combustibles: CombustibleDisponible[]
+}
+
 export default function GasoPrecios() {
   const [selectedProvincia, setSelectedProvincia] = useState<ProvinciaId>("badajoz")
   const [selectedMunicipio, setSelectedMunicipio] = useState<string>("")
   const [selectedProducto, setSelectedProducto] = useState<string>("1")
   const [gasolineras, setGasolineras] = useState<Gasolinera[]>([])
+  const [gasolinerasMunicipio, setGasolinerasMunicipio] = useState<GasolineraMunicipio[]>([])
+  const [combustibleSeleccionadoPorGasolinera, setCombustibleSeleccionadoPorGasolinera] = useState<
+    Record<string, string>
+  >({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -64,6 +83,36 @@ export default function GasoPrecios() {
     {id: "27", nombre:"Diésel Renovable"},
     {id:"28", nombre:"Gasolina renovable"}
   ]
+
+  const PRODUCTO_A_CAMPO_API: Record<string, string> = {
+    "1": "Precio Gasolina 95 E5",
+    "23": "Precio Gasolina 95 E10",
+    "24": "Precio Gasolina 95 E25",
+    "25": "Precio Gasolina 95 E85",
+    "20": "Precio Gasolina 95 E5 Premium",
+    "3": "Precio Gasolina 98 E5",
+    "21": "Precio Gasolina 98 E10",
+    "4": "Precio Gasoleo A",
+    "5": "Precio Gasoleo Premium",
+    "6": "Precio Gasoleo B",
+    "7": "Precio Gasoleo C",
+    "16": "Precio Bioetanol",
+    "8": "Precio Biodiesel",
+    "17": "Precio Gases licuados del petróleo",
+    "18": "Precio Gas Natural Comprimido",
+    "19": "Precio Gas Natural Licuado",
+    "22": "Precio Hidrogeno",
+    "26": "Precio AdBlue",
+    "27": "Precio Diesel Renovable",
+    "28": "Precio Gasolina renovable",
+  }
+
+  const parsePrecio = (raw: unknown) => {
+    if (typeof raw !== "string") return null
+    if (!raw.trim()) return null
+    const n = Number.parseFloat(raw.replace(/,/g, "."))
+    return Number.isFinite(n) ? n : null
+  }
 
   const buscarGasolineras = async () => {
     if (!selectedMunicipio || !selectedProducto) return
@@ -106,9 +155,75 @@ export default function GasoPrecios() {
 
       listaGasolineras.sort((a, b) => a.precio - b.precio)
       setGasolineras(listaGasolineras)
+      setGasolinerasMunicipio([])
     } catch (err) {
       setError("No se pudieron cargar las gasolineras. Intenta de nuevo.")
       setGasolineras([])
+      setGasolinerasMunicipio([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const buscarGasolinerasMunicipio = async () => {
+    if (!selectedMunicipio) return
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(
+        `https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/FiltroMunicipio/${selectedMunicipio}`,
+      )
+
+      if (!response.ok) {
+        throw new Error("Error al obtener los datos")
+      }
+
+      const data = await response.json()
+      const lista: GasolineraMunicipio[] = []
+      const selectedByKey: Record<string, string> = {}
+
+      data.ListaEESSPrecio?.forEach((eess: any) => {
+        const direccion = eess["Dirección"]
+        const nombre = eess["Rótulo"] || "Sin nombre"
+        const latitud = eess["Latitud"]
+        const longitud = eess["Longitud (WGS84)"]
+        const horario = eess["Horario"]
+
+        const combustibles: CombustibleDisponible[] = productos
+          .map((p) => {
+            const campo = PRODUCTO_A_CAMPO_API[p.id]
+            const precio = campo ? parsePrecio(eess[campo]) : null
+            if (precio == null) return null
+            return { id: p.id, nombre: p.nombre, precio }
+          })
+          .filter(Boolean) as CombustibleDisponible[]
+
+        const key = `${nombre}__${direccion}__${latitud}__${longitud}`
+        if (combustibles.length > 0) {
+          selectedByKey[key] = combustibles[0].id
+        }
+
+        lista.push({
+          direccion,
+          nombre,
+          latitud,
+          longitud,
+          horario,
+          combustibles,
+        })
+      })
+
+      lista.sort((a, b) => a.nombre.localeCompare(b.nombre))
+      setGasolinerasMunicipio(lista)
+      setCombustibleSeleccionadoPorGasolinera(selectedByKey)
+      setGasolineras([])
+    } catch (err) {
+      setError("No se pudieron cargar las gasolineras. Intenta de nuevo.")
+      setGasolineras([])
+      setGasolinerasMunicipio([])
+      setCombustibleSeleccionadoPorGasolinera({})
     } finally {
       setLoading(false)
     }
@@ -214,6 +329,42 @@ export default function GasoPrecios() {
                   )}
                 </Button>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Extra: All fuels per station (municipio) */}
+        <Card className="mb-8 border-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Fuel className="h-5 w-5" />
+              Solo municipio (ver todos los combustibles)
+            </CardTitle>
+            <CardDescription>
+              Carga todas las gasolineras del municipio y, dentro de cada una, elige en un desplegable qué combustible
+              quieres ver.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button
+                onClick={buscarGasolinerasMunicipio}
+                disabled={!selectedMunicipio || loading}
+                size="lg"
+                className="sm:w-auto"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Cargando...
+                  </>
+                ) : (
+                  <>
+                    <Fuel className="mr-2 h-4 w-4" />
+                    Ver todas las gasolineras
+                  </>
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -331,8 +482,89 @@ export default function GasoPrecios() {
           </>
         )}
 
+        {gasolinerasMunicipio.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Gasolineras del municipio</CardTitle>
+              <CardDescription>Elige un combustible para ver su precio en cada estación</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {gasolinerasMunicipio.map((g, index) => {
+                  const key = `${g.nombre}__${g.direccion}__${g.latitud}__${g.longitud}`
+                  const selectedId = combustibleSeleccionadoPorGasolinera[key] ?? ""
+                  const selected = g.combustibles.find((c) => c.id === selectedId) ?? null
+
+                  return (
+                    <div key={`${key}__${index}`} className="p-4 rounded-lg border-2 transition-all hover:shadow-md">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold truncate">{g.nombre}</h3>
+                          <p className="text-sm opacity-90">
+                            <MapPin className="inline h-3 w-3 mr-1" />
+                            {g.direccion}
+                          </p>
+                          <p className="text-sm opacity-90">{g.horario}</p>
+
+                          <div className="mt-3 flex flex-col sm:flex-row gap-3 sm:items-center">
+                            <Select
+                              value={selectedId}
+                              onValueChange={(v) =>
+                                setCombustibleSeleccionadoPorGasolinera((prev) => ({ ...prev, [key]: v }))
+                              }
+                              disabled={g.combustibles.length === 0}
+                            >
+                              <SelectTrigger className="w-full sm:max-w-sm">
+                                <SelectValue
+                                  placeholder={
+                                    g.combustibles.length === 0
+                                      ? "Sin combustibles con precio"
+                                      : "Elige un combustible..."
+                                  }
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {g.combustibles.map((c) => (
+                                  <SelectItem key={`${key}__${c.id}`} value={c.id}>
+                                    {c.nombre}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            <div className="text-sm text-muted-foreground">
+                              {selected ? (
+                                <>
+                                  <span className="font-medium text-foreground">{selected.precio.toFixed(3)}€</span>{" "}
+                                  / litro
+                                </>
+                              ) : (
+                                "—"
+                              )}
+                            </div>
+                          </div>
+
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="mt-2 h-7 text-xs"
+                            onClick={() => abrirEnMaps(g.latitud, g.longitud, g.nombre)}
+                          >
+                            <MapPin className="h-3 w-3 mr-1" />
+                            Ver en Google Maps
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Empty State */}
-        {!loading && gasolineras.length === 0 && !error && (
+        {!loading && gasolineras.length === 0 && gasolinerasMunicipio.length === 0 && !error && (
           <Card className="border-dashed border-2">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <Fuel className="h-16 w-16 text-muted-foreground/50 mb-4" />
