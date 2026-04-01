@@ -1,0 +1,6 @@
+# Excluir node_modules del cache de build
+node_modules
+.git
+*.log
+.DS_Store
+.next/cache
