@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Fuel, TrendingDown, TrendingUp, MapPin, Loader2 } from "lucide-react"
 import municipiosBadajoz from "@/data/municipiosBadajoz.json"
 import municipiosCaceres from "@/data/municipiosCaceres.json"
+import { useTheme } from "next-themes"
 
 type ProvinciaId = "badajoz" | "caceres"
 
@@ -101,6 +102,20 @@ export default function GasoPrecios() {
   const [gasolinerasMunicipio, setGasolinerasMunicipio] = useState<GasolineraMunicipio[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [colorblindMode, setColorblindMode] = useState(false)
+  const { theme, setTheme } = useTheme()
+
+  useEffect(() => {
+    const raw = localStorage.getItem("gp_colorblind")
+    const enabled = raw === "1"
+    setColorblindMode(enabled)
+    document.documentElement.toggleAttribute("data-colorblind", enabled)
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem("gp_colorblind", colorblindMode ? "1" : "0")
+    document.documentElement.toggleAttribute("data-colorblind", colorblindMode)
+  }, [colorblindMode])
 
   const municipios = useMemo(
     () =>
@@ -284,6 +299,13 @@ export default function GasoPrecios() {
   }, [gasolinerasMunicipio, selectedProducto])
 
   const getPriceColor = (precio: number, index: number, total: number) => {
+    if (colorblindMode) {
+      if (index === 0) return "bg-sky-500/10 border-sky-500/30 text-sky-700 dark:text-sky-300"
+      if (index === total - 1) return "bg-orange-500/10 border-orange-500/30 text-orange-700 dark:text-orange-300"
+      if (precio < 1.55) return "bg-sky-500/10 border-sky-500/30 text-sky-700 dark:text-sky-300"
+      if (precio > 1.80) return "bg-orange-500/10 border-orange-500/30 text-orange-700 dark:text-orange-300"
+      return "bg-violet-500/10 border-violet-500/30 text-violet-700 dark:text-violet-300"
+    }
     if (index === 0) return "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
     if (index === total - 1) return "bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300"
     if (precio < 1.55) return "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300"
@@ -303,13 +325,58 @@ export default function GasoPrecios() {
       {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-18 w-18 items-center justify-center rounded-2xl bg-[#16A34A] text-white shadow-sm transition-colors duration-150 hover:bg-[#22C55E]">
-              <img src="https://raw.githubusercontent.com/ivanOrdAlv/GasoPreciosPlus/refs/heads/main/img/gaslylogo.png" alt="Logo de Gas.ly" width={115} height={115} style={{ maxWidth: "115px", maxHeight: "115px", marginTop:"20px" }} />
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-18 w-18 items-center justify-center rounded-2xl bg-[#16A34A] text-white shadow-sm transition-colors duration-150 hover:bg-[#22C55E]">
+                <img
+                  src="https://raw.githubusercontent.com/ivanOrdAlv/GasoPreciosPlus/refs/heads/main/img/gaslylogo.png"
+                  alt="Logo de Gas.ly"
+                  width={115}
+                  height={115}
+                  style={{ maxWidth: "115px", maxHeight: "115px", marginTop: "20px" }}
+                />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold tracking-tight">Gas.ly</h1>
+                <p className="text-sm text-muted-foreground">
+                  Compara precios de gasolineras en toda <b>Extremadura</b>
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Gas.ly</h1>
-              <p className="text-sm text-muted-foreground">Compara precios de gasolineras en toda <b>Extremadura</b></p>
+
+            {/*
+              =========================
+              SELECTOR DE TEMA (fácil de comentar)
+              Claro / Oscuro / Daltónicos
+              =========================
+            */}
+            <div className="w-44">
+              <Select
+                value={colorblindMode ? "colorblind" : theme === "dark" ? "dark" : "light"}
+                onValueChange={(v) => {
+                  if (v === "dark") {
+                    setColorblindMode(false)
+                    setTheme("dark")
+                    return
+                  }
+                  if (v === "colorblind") {
+                    setTheme("light")
+                    setColorblindMode(true)
+                    return
+                  }
+                  setColorblindMode(false)
+                  setTheme("light")
+                }}
+              >
+                <SelectTrigger className={`w-full ${interactiveHover}`}>
+                  <SelectValue placeholder="Modo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">Claro</SelectItem>
+                  <SelectItem value="dark">Oscuro</SelectItem>
+                  <SelectItem value="colorblind">Daltónicos</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
@@ -662,9 +729,9 @@ export default function GasoPrecios() {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            {index === 0 && <TrendingDown className="h-4 w-4 flex-shrink-0" />}
+                            {index === 0 && <TrendingDown className="h-4 w-4 shrink-0" />}
                             {index === gasolinerasMunicipioOrdenadas.length - 1 && (
-                              <TrendingUp className="h-4 w-4 flex-shrink-0" />
+                              <TrendingUp className="h-4 w-4 shrink-0" />
                             )}
                             <h3 className="font-semibold truncate">{g.nombre}</h3>
                           </div>
@@ -709,7 +776,7 @@ export default function GasoPrecios() {
                             Ver en Google Maps
                           </Button>
                         </div>
-                        <div className="text-right flex-shrink-0">
+                        <div className="text-right shrink-0">
                           <div className="text-2xl font-bold">{selected.precio.toFixed(3)}€</div>
                           <div className="text-xs opacity-75">{selected.nombre}</div>
                         </div>
