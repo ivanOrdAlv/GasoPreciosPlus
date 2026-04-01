@@ -4,6 +4,8 @@ import { useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Fuel, TrendingDown, TrendingUp, MapPin, Loader2 } from "lucide-react"
 import municipiosBadajoz from "@/data/municipiosBadajoz.json"
 import municipiosCaceres from "@/data/municipiosCaceres.json"
@@ -38,6 +40,55 @@ interface GasolineraMunicipio {
   longitud: string
   horario: string
   combustibles: CombustibleDisponible[]
+}
+
+function RepostajeCalculator({ precioPorLitro }: { precioPorLitro: number }) {
+  const [litros, setLitros] = useState<string>("")
+  const [total, setTotal] = useState<number | null>(null)
+
+  const calcular = () => {
+    const l = Number.parseFloat(litros.replace(/,/g, "."))
+    if (!Number.isFinite(l) || l <= 0) {
+      setTotal(null)
+      return
+    }
+    setTotal(precioPorLitro * l)
+  }
+
+  return (
+    <div className="mt-4 rounded-lg border bg-background/40 p-3">
+      <p className="text-xs text-muted-foreground mb-3">Calculadora de repostaje</p>
+      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div className="grid gap-2">
+          <Label htmlFor="litros">Litros</Label>
+          <Input
+            id="litros"
+            inputMode="decimal"
+            placeholder="Ej. 35"
+            value={litros}
+            onChange={(e) => {
+              setLitros(e.target.value)
+              setTotal(null)
+            }}
+          />
+        </div>
+        <Button
+          type="button"
+          onClick={calcular}
+          className="bg-[#16A34A] text-white hover:bg-[#22C55E] transition-all duration-150 ease-out hover:translate-y hover:shadow-md"
+        >
+          Calcular
+        </Button>
+      </div>
+
+      <div className="mt-3 text-sm">
+        Total:{" "}
+        <span className="font-semibold">
+          {total == null ? "—" : `${total.toFixed(2).replace(".", ",")}€`}
+        </span>
+      </div>
+    </div>
+  )
 }
 
 export default function GasoPrecios() {
@@ -248,7 +299,7 @@ export default function GasoPrecios() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+    <div className="min-h-screen bg-linear-to-b from-background via-background to-muted/20">
       {/* Header */}
       <header className="border-b bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
@@ -639,6 +690,14 @@ export default function GasoPrecios() {
                               ))}
                             </div>
                           </div>
+
+                          {/*
+                            =========================
+                            CALCULADORA (fácil de comentar)
+                            Descomenta/comenta este bloque para activar/desactivar la calculadora por gasolinera.
+                            =========================
+                          */}
+                          <RepostajeCalculator precioPorLitro={selected.precio} />
 
                           <Button
                             variant="ghost"
