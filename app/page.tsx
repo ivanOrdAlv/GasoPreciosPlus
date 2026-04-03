@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Fuel, TrendingDown, TrendingUp, MapPin, Loader2 } from "lucide-react"
+import { Fuel, TrendingDown, TrendingUp, MapPin, Loader2, Star } from "lucide-react"
 import municipiosBadajoz from "@/data/municipiosBadajoz.json"
 import municipiosCaceres from "@/data/municipiosCaceres.json"
 import { useTheme } from "next-themes"
@@ -103,6 +103,8 @@ export default function GasoPrecios() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [colorblindMode, setColorblindMode] = useState(false)
+  const [favoritos, setFavoritos] = useState<Set<string>>(new Set())
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const { theme, setTheme } = useTheme()
 
   useEffect(() => {
@@ -116,6 +118,22 @@ export default function GasoPrecios() {
     localStorage.setItem("gp_colorblind", colorblindMode ? "1" : "0")
     document.documentElement.toggleAttribute("data-colorblind", colorblindMode)
   }, [colorblindMode])
+
+  useEffect(() => {
+    const favs = localStorage.getItem("gp_favoritos")
+    if (favs) {
+      try {
+        const parsed = JSON.parse(favs)
+        setFavoritos(new Set(parsed))
+      } catch {
+        // ignore
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem("gp_favoritos", JSON.stringify([...favoritos]))
+  }, [favoritos])
 
   const municipios = useMemo(
     () =>
@@ -247,6 +265,10 @@ export default function GasoPrecios() {
       }
 
       const data = await response.json()
+      // Asumir que la API tiene un campo Fecha, sino usar ahora
+      const fechaStr = data.Fecha || data.UltimaActualizacion || data["Última Actualización"]
+      setLastUpdate(fechaStr ? new Date(fechaStr) : new Date())
+
       const lista: GasolineraMunicipio[] = []
 
       data.ListaEESSPrecio?.forEach((eess: any) => {
@@ -320,6 +342,104 @@ export default function GasoPrecios() {
     window.open(mapsUrl, "_blank")
   }
 
+  const toggleFavorito = (id: string) => {
+    setFavoritos(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
+  const isGasolineraAbierta = (horario: string): boolean => {
+    if (!horario || horario.trim() === "") return false
+
+    const now = new Date()
+    const day = now.getDay() // 0=domingo, 1=lunes, ..., 6=sábado
+    const hour = now.getHours()
+    const minute = now.getMinutes()
+    const currentTime = hour * 60 + minute
+
+    // Mapear días: L=lunes(1), M=martes(2), X=miércoles(3), J=jueves(4), V=viernes(5), S=sábado(6), D=domingo(0)
+    const dayMap: Record<string, number> = { L: 1, M: 2, X: 3, J: 4, V: 5, S: 6, D: 0 }
+
+    const parseTime = (timeStr: string): number => {
+      const [h, m] = timeStr.split(":").map(Number)
+      return h * 60 + (m || 0)
+    }
+
+    const parts = horario.split(";").map(p => p.trim())
+
+    for (const part of parts) {
+      const colonIndex = part.indexOf(":")
+      if (colonIndex === -1) continue
+
+      const daysPart = part.substring(0, colonIndex).trim()
+      const timePart = part.substring(colonIndex + 1).trim()
+
+      if (timePart === "24H") {
+        // Siempre abierto para estos días
+        if (daysPart === "L-D") return true
+        // Parsear días específicos
+        const dayRanges = daysPart.split("-")
+        if (dayRanges.length === 2) {
+          const startDay = dayMap[dayRanges[0]]
+          const endDay = dayMap[dayRanges[1]]
+          if (startDay !== undefined && endDay !== undefined) {
+            if (startDay <= endDay) {
+              if (day >= startDay && day <= endDay) return true
+            } else {
+              // Cruza domingo
+              if (day >= startDay || day <= endDay) return true
+            }
+          }
+        } else if (dayRanges.length === 1) {
+          const singleDay = dayMap[daysPart]
+          if (singleDay !== undefined && day === singleDay) return true
+        }
+      } else {
+        // Parsear rango de tiempo
+        const timeRange = timePart.split("-")
+        if (timeRange.length === 2) {
+          const startTime = parseTime(timeRange[0])
+          const endTime = parseTime(timeRange[1])
+
+          // Verificar si el día actual está en el rango de días
+          const dayRanges = daysPart.split("-")
+          let dayMatches = false
+          if (dayRanges.length === 2) {
+            const startDay = dayMap[dayRanges[0]]
+            const endDay = dayMap[dayRanges[1]]
+            if (startDay !== undefined && endDay !== undefined) {
+              if (startDay <= endDay) {
+                dayMatches = day >= startDay && day <= endDay
+              } else {
+                dayMatches = day >= startDay || day <= endDay
+              }
+            }
+          } else if (dayRanges.length === 1) {
+            const singleDay = dayMap[daysPart]
+            dayMatches = singleDay !== undefined && day === singleDay
+          }
+
+          if (dayMatches) {
+            if (startTime <= endTime) {
+              if (currentTime >= startTime && currentTime <= endTime) return true
+            } else {
+              // Cruza medianoche
+              if (currentTime >= startTime || currentTime <= endTime) return true
+            }
+          }
+        }
+      }
+    }
+
+    return false
+  }
+
   return (
     <div className="min-h-screen bg-linear-to-b from-background via-background to-muted/20">
       {/* Header */}
@@ -384,6 +504,11 @@ export default function GasoPrecios() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
+        {lastUpdate && (
+          <p className="text-center text-sm text-muted-foreground mb-4">
+            Datos actualizados hace {Math.floor((Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60))} horas
+          </p>
+        )}
         {/*
           =========================
           LEGACY (comentado a propósito)
@@ -734,6 +859,9 @@ export default function GasoPrecios() {
                               <TrendingUp className="h-4 w-4 shrink-0" />
                             )}
                             <h3 className="font-semibold truncate">{g.nombre}</h3>
+                            <span className={`text-xs px-2 py-1 rounded ${isGasolineraAbierta(g.horario) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                              {isGasolineraAbierta(g.horario) ? 'Abierto' : 'Cerrado'}
+                            </span>
                           </div>
                           <p className="text-sm opacity-90">
                             <MapPin className="inline h-3 w-3 mr-1" />
@@ -766,15 +894,26 @@ export default function GasoPrecios() {
                           */}
                           <RepostajeCalculator precioPorLitro={selected.precio} />
 
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="mt-2 h-7 text-xs"
-                            onClick={() => abrirEnMaps(g.latitud, g.longitud, g.nombre)}
-                          >
-                            <MapPin className="h-3 w-3 mr-1" />
-                            Ver en Google Maps
-                          </Button>
+                          <div className="flex gap-2 mt-2">
+                            <Button
+                              variant={favoritos.has(g.id) ? "default" : "outline"}
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => toggleFavorito(g.id)}
+                            >
+                              <Star className={`h-3 w-3 mr-1 ${favoritos.has(g.id) ? 'fill-current' : ''}`} />
+                              {favoritos.has(g.id) ? 'Quitar favorito' : 'Añadir favorito'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => abrirEnMaps(g.latitud, g.longitud, g.nombre)}
+                            >
+                              <MapPin className="h-3 w-3 mr-1" />
+                              Ver en Google Maps
+                            </Button>
+                          </div>
                         </div>
                         <div className="text-right shrink-0">
                           <div className="text-2xl font-bold">{selected.precio.toFixed(3)}€</div>
