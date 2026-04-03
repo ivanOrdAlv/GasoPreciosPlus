@@ -504,11 +504,11 @@ export default function GasoPrecios() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {lastUpdate && (
+        {/*lastUpdate && (
           <p className="text-center text-sm text-muted-foreground mb-4">
             Datos actualizados hace {Math.floor((Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60))} horas
           </p>
-        )}
+        )*/}
         {/*
           =========================
           LEGACY (comentado a propósito)
