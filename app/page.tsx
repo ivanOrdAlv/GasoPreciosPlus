@@ -103,7 +103,7 @@ export default function GasoPrecios() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [colorblindMode, setColorblindMode] = useState(false)
-  const [favoritos, setFavoritos] = useState<Set<string>>(new Set())
+  const [favoritos, setFavoritos] = useState<GasolineraMunicipio[]>([])
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const { theme, setTheme } = useTheme()
 
@@ -124,7 +124,7 @@ export default function GasoPrecios() {
     if (favs) {
       try {
         const parsed = JSON.parse(favs)
-        setFavoritos(new Set(parsed))
+        setFavoritos(parsed)
       } catch {
         // ignore
       }
@@ -132,7 +132,7 @@ export default function GasoPrecios() {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem("gp_favoritos", JSON.stringify([...favoritos]))
+    localStorage.setItem("gp_favoritos", JSON.stringify(favoritos))
   }, [favoritos])
 
   const municipios = useMemo(
@@ -342,15 +342,14 @@ export default function GasoPrecios() {
     window.open(mapsUrl, "_blank")
   }
 
-  const toggleFavorito = (id: string) => {
+  const toggleFavorito = (g: GasolineraMunicipio) => {
     setFavoritos(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(id)) {
-        newSet.delete(id)
+      const isFav = prev.some(f => f.id === g.id)
+      if (isFav) {
+        return prev.filter(f => f.id !== g.id)
       } else {
-        newSet.add(id)
+        return [...prev, g]
       }
-      return newSet
     })
   }
 
@@ -896,13 +895,13 @@ export default function GasoPrecios() {
 
                           <div className="flex gap-2 mt-2">
                             <Button
-                              variant={favoritos.has(g.id) ? "default" : "outline"}
+                              variant={favoritos.some(f => f.id === g.id) ? "default" : "outline"}
                               size="sm"
                               className="h-7 text-xs"
-                              onClick={() => toggleFavorito(g.id)}
+                              onClick={() => toggleFavorito(g)}
                             >
-                              <Star className={`h-3 w-3 mr-1 ${favoritos.has(g.id) ? 'fill-current' : ''}`} />
-                              {favoritos.has(g.id) ? 'Quitar favorito' : 'Añadir favorito'}
+                              <Star className={`h-3 w-3 mr-1 ${favoritos.some(f => f.id === g.id) ? 'fill-current' : ''}`} />
+                              {favoritos.some(f => f.id === g.id) ? 'Quitar favorito' : 'Añadir favorito'}
                             </Button>
                             <Button
                               variant="ghost"
@@ -929,7 +928,136 @@ export default function GasoPrecios() {
         )}
 
         {/* Empty State */}
+        {/*
         {!loading && gasolinerasMunicipioOrdenadas.length === 0 && !error && (
+          <Card className="border-dashed border-2">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <Fuel className="h-16 w-16 text-muted-foreground/50 mb-4" />
+
+              {gasolinerasMunicipio.length === 0 ? (
+                <>
+                  <h3 className="text-lg font-semibold mb-2">Busca precios por municipio</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    Elige provincia, municipio y producto para ver las gasolineras disponibles en tiempo real.
+                  </p>
+                </>
+              ) : (
+                <>
+                  {(() => {
+                    const municipioNombre =
+                      Object.entries(MUNICIPIOS_POR_PROVINCIA[selectedProvincia]).find(([, id]) => id.toString() === selectedMunicipio)?.[0] ??
+                      ""
+                    const productoNombre = productos.find((p) => p.id === selectedProducto)?.nombre ?? ""
+                    return (
+                      <>
+                        <h3 className="text-lg font-semibold mb-2">Sin gasolineras con ese combustible</h3>
+                        <p className="text-muted-foreground max-w-md">
+                          En <b>{municipioNombre || "el municipio seleccionado"}</b> no encontramos gasolineras con{" "}
+                          <b>{productoNombre}</b>.
+                        </p>
+                        <p className="text-muted-foreground max-w-md mt-2">
+                          Prueba con otro producto para ver precios.
+                        </p>
+                      </>
+                    )
+                  })()}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+        */}
+
+        {/* Favoritas cuando no hay búsqueda */}
+        {!loading && gasolinerasMunicipioOrdenadas.length === 0 && !error && favoritos.length > 0 && gasolinerasMunicipio.length === 0 && (
+          <Card className="border-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5" />
+                Tus gasolineras favoritas
+              </CardTitle>
+              <CardDescription>
+                Aquí tienes tus gasolineras guardadas como favoritas.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {favoritos.map((g, index) => {
+                  const selected = g.combustibles.find((c) => c.id === selectedProducto) ?? g.combustibles[0]
+                  return (
+                    <div
+                      key={`${g.id}__fav__${index}`}
+                      className={`p-4 rounded-lg border-2 transition-all hover:shadow-md bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold truncate">{g.nombre}</h3>
+                            <span className={`text-xs px-2 py-1 rounded ${isGasolineraAbierta(g.horario) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                              {isGasolineraAbierta(g.horario) ? 'Abierto' : 'Cerrado'}
+                            </span>
+                          </div>
+                          <p className="text-sm opacity-90">
+                            <MapPin className="inline h-3 w-3 mr-1" />
+                            {g.direccion}
+                          </p>
+                          <p className="text-sm opacity-90">{g.horario}</p>
+
+                          <div className="mt-3">
+                            <p className="text-xs text-muted-foreground mb-2">Combustibles disponibles</p>
+                            <div className="space-y-1">
+                              {g.combustibles.map((c) => (
+                                <div
+                                  key={`${g.id}__${c.id}__fav`}
+                                  className={`flex items-center justify-between text-xs ${
+                                    c.id === selected.id ? "text-foreground font-medium" : "text-muted-foreground"
+                                  }`}
+                                >
+                                  <span className="truncate pr-3">{c.nombre}</span>
+                                  <span>{c.precio.toFixed(3)}€</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <RepostajeCalculator precioPorLitro={selected.precio} />
+
+                          <div className="flex gap-2 mt-2">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => toggleFavorito(g)}
+                            >
+                              <Star className="h-3 w-3 mr-1 fill-current" />
+                              Quitar favorito
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => abrirEnMaps(g.latitud, g.longitud, g.nombre)}
+                            >
+                              <MapPin className="h-3 w-3 mr-1" />
+                              Ver en Google Maps
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-2xl font-bold">{selected.precio.toFixed(3)}€</div>
+                          <div className="text-xs opacity-75">{selected.nombre}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Empty State cuando no hay favoritas ni búsqueda */}
+        {!loading && gasolinerasMunicipioOrdenadas.length === 0 && !error && favoritos.length === 0 && (
           <Card className="border-dashed border-2">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <Fuel className="h-16 w-16 text-muted-foreground/50 mb-4" />
