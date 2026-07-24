@@ -41,12 +41,15 @@ interface GasolineraMunicipio {
   longitud: string
   horario: string
   combustibles: CombustibleDisponible[]
+  municipioId?: string
 }
+
+
 
 function RepostajeCalculator({ precioPorLitro }: { precioPorLitro: number }) {
   const [litros, setLitros] = useState<string>("")
   const [total, setTotal] = useState<number | null>(null)
-
+  const [loadingFavoritos, setLoadingFavoritos] = useState(false)
   const calcular = () => {
     const l = Number.parseFloat(litros.replace(/,/g, "."))
     if (!Number.isFinite(l) || l <= 0) {
@@ -131,9 +134,19 @@ export default function GasoPrecios() {
     }
   }, [])
 
-  useEffect(() => {
-    localStorage.setItem("gp_favoritos", JSON.stringify(favoritos))
-  }, [favoritos])
+// useEffect de carga — llamar a refreshFavoritos tras cargar del localStorage
+useEffect(() => {
+  const favs = localStorage.getItem("gp_favoritos")
+  if (favs) {
+    try {
+      const parsed = JSON.parse(favs)
+      setFavoritos(parsed)
+      refreshFavoritos(parsed)  // <-- actualizar precios al arrancar
+    } catch {
+      // ignore
+    }
+  }
+}, [])
 
   const municipios = useMemo(
     () =>
@@ -279,7 +292,7 @@ export default function GasoPrecios() {
         const latitud = eess["Latitud"]
         const longitud = eess["Longitud (WGS84)"]
         const horario = eess["Horario"]
-
+        
         const combustibles: CombustibleDisponible[] = productos
           .map((p) => {
             const campo = PRODUCTO_A_CAMPO_API[p.id]
@@ -341,17 +354,73 @@ export default function GasoPrecios() {
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
     window.open(mapsUrl, "_blank")
   }
+const [loadingFavoritos, setLoadingFavoritos] = useState(false)
+ // toggleFavorito — guardar el municipioId al añadir favorita
+const toggleFavorito = (g: GasolineraMunicipio) => {
+  setFavoritos(prev => {
+    
+    const isFav = prev.some(f => f.id === g.id)
+    if (isFav) {
+      return prev.filter(f => f.id !== g.id)
+    } else {
+      return [...prev, { ...g, municipioId: selectedMunicipio }]  // <-- añadir municipioId
+    }
+  })
+}
 
-  const toggleFavorito = (g: GasolineraMunicipio) => {
-    setFavoritos(prev => {
-      const isFav = prev.some(f => f.id === g.id)
-      if (isFav) {
-        return prev.filter(f => f.id !== g.id)
-      } else {
-        return [...prev, g]
-      }
-    })
+const refreshFavoritos = async (favs: GasolineraMunicipio[]) => {
+  const favsConMunicipio = favs.filter(f => f.municipioId)
+  if (favsConMunicipio.length === 0) return
+
+  setLoadingFavoritos(true)
+
+  // Agrupar favoritas por municipioId para no llamar varias veces al mismo municipio
+  const municipioMap = new Map<string, GasolineraMunicipio[]>()
+  for (const fav of favsConMunicipio) {
+    const lista = municipioMap.get(fav.municipioId!) ?? []
+    lista.push(fav)
+    municipioMap.set(fav.municipioId!, lista)
   }
+
+  const favoritasActualizadas = [...favs]
+
+  for (const [municipioId] of municipioMap) {
+    try {
+      const res = await fetch(
+        `https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/FiltroMunicipio/${municipioId}`
+      )
+      const data = await res.json()
+
+      for (const eess of data.ListaEESSPrecio ?? []) {
+        const idRaw = eess["IDEESS"] ?? eess["IDEEESS"] ?? eess["IdEESS"] ?? eess["ID"] ?? eess["Id"]
+        const idActual = idRaw != null && `${idRaw}`.trim() ? `${idRaw}`.trim() : ""
+
+        const idx = favoritasActualizadas.findIndex(f => f.id === idActual)
+        if (idx === -1) continue
+
+        // Reconstruir combustibles con precios frescos
+        const combustiblesActualizados: CombustibleDisponible[] = productos
+          .map((p) => {
+            const campo = PRODUCTO_A_CAMPO_API[p.id]
+            const precio = campo ? parsePrecio(eess[campo]) : null
+            if (precio == null) return null
+            return { id: p.id, nombre: p.nombre, precio }
+          })
+          .filter(Boolean) as CombustibleDisponible[]
+
+        favoritasActualizadas[idx] = {
+          ...favoritasActualizadas[idx],
+          combustibles: combustiblesActualizados,
+        }
+      }
+    } catch {
+      // Si falla, se quedan los precios anteriores
+    }
+  }
+
+  setFavoritos(favoritasActualizadas)
+  setLoadingFavoritos(false)
+}
 
   const isGasolineraAbierta = (horario: string): boolean => {
     if (!horario || horario.trim() === "") return false
@@ -977,8 +1046,10 @@ export default function GasoPrecios() {
                 Tus gasolineras favoritas
               </CardTitle>
               <CardDescription>
-                Aquí tienes tus gasolineras guardadas como favoritas.
-              </CardDescription>
+  {loadingFavoritos
+    ? 'Actualizando precios...'
+    : 'Aquí tienes tus gasolineras guardadas como favoritas.'}
+</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -1120,3 +1191,7 @@ export default function GasoPrecios() {
     </div>
   )
 }
+function setLoadingFavoritos(arg0: boolean) {
+  throw new Error("Function not implemented.")
+}
+
