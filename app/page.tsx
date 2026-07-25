@@ -49,7 +49,7 @@ interface GasolineraMunicipio {
 function RepostajeCalculator({ precioPorLitro }: { precioPorLitro: number }) {
   const [litros, setLitros] = useState<string>("")
   const [total, setTotal] = useState<number | null>(null)
-  const [loadingFavoritos, setLoadingFavoritos] = useState(false)
+
   const calcular = () => {
     const l = Number.parseFloat(litros.replace(/,/g, "."))
     if (!Number.isFinite(l) || l <= 0) {
@@ -122,17 +122,6 @@ export default function GasoPrecios() {
     document.documentElement.toggleAttribute("data-colorblind", colorblindMode)
   }, [colorblindMode])
 
-  useEffect(() => {
-    const favs = localStorage.getItem("gp_favoritos")
-    if (favs) {
-      try {
-        const parsed = JSON.parse(favs)
-        setFavoritos(parsed)
-      } catch {
-        // ignore
-      }
-    }
-  }, [])
 
 // useEffect de carga — llamar a refreshFavoritos tras cargar del localStorage
 useEffect(() => {
@@ -147,6 +136,11 @@ useEffect(() => {
     }
   }
 }, [])
+
+// useEffect de guardado — persiste favoritos en localStorage
+useEffect(() => {
+  localStorage.setItem("gp_favoritos", JSON.stringify(favoritos))
+}, [favoritos])
 
   const municipios = useMemo(
     () =>
@@ -1190,8 +1184,5 @@ const refreshFavoritos = async (favs: GasolineraMunicipio[]) => {
       </footer>
     </div>
   )
-}
-function setLoadingFavoritos(arg0: boolean) {
-  throw new Error("Function not implemented.")
 }
 
