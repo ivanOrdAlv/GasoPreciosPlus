@@ -84,26 +84,43 @@ interface GasolineraMunicipio {
 function toTitleCase(str: string): string {
   // Palabras que deben ir en minúscula (preposiciones y artículos)
   const minusculas = new Set([
-    "de", "del", "la", "las", "los", "el", "y", "e", "o", "u",
-    "a", "en", "con", "por", "para", "al", "las", "un", "una"
-  ])
+    "de",
+    "del",
+    "la",
+    "las",
+    "los",
+    "el",
+    "y",
+    "e",
+    "o",
+    "u",
+    "a",
+    "en",
+    "con",
+    "por",
+    "para",
+    "al",
+    "las",
+    "un",
+    "una",
+  ]);
 
   return str
     .toLowerCase()
     .split(" ")
     .map((palabra, index) => {
       // La primera palabra siempre en mayúscula
-      if (index === 0) return capitalizar(palabra)
+      if (index === 0) return capitalizar(palabra);
       // El resto, solo si no está en la lista de minúsculas
-      return minusculas.has(palabra) ? palabra : capitalizar(palabra)
+      return minusculas.has(palabra) ? palabra : capitalizar(palabra);
     })
-    .join(" ")
+    .join(" ");
 }
 
 function capitalizar(palabra: string): string {
-  if (!palabra) return ""
+  if (!palabra) return "";
   // Maneja casos como "ÁLAVA" → "Álava" correctamente con tildes
-  return palabra.charAt(0).toUpperCase() + palabra.slice(1)
+  return palabra.charAt(0).toUpperCase() + palabra.slice(1);
 }
 
 function RepostajeCalculator({ precioPorLitro }: { precioPorLitro: number }) {
@@ -178,7 +195,7 @@ export default function GasoPrecios() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const { theme, setTheme } = useTheme();
   const [municipioOpen, setMunicipioOpen] = useState(false);
-const isFirstRender = useRef(true);
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
     const raw = localStorage.getItem("gp_colorblind");
@@ -222,47 +239,50 @@ const isFirstRender = useRef(true);
     }
   }, []);
 
-useEffect(() => {
-  // En el primer render los valores están vacíos — saltamos el guardado
-  if (isFirstRender.current) {
-    isFirstRender.current = false
-    return
-  }
+  useEffect(() => {
+    // En el primer render los valores están vacíos — saltamos el guardado
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
 
-  if (selectedProvincia) localStorage.setItem("gp_last_provincia", selectedProvincia)
-  if (selectedMunicipio) {
-    localStorage.setItem("gp_last_municipio", selectedMunicipio)
-  } else {
-    localStorage.removeItem("gp_last_municipio")
-  }
-  localStorage.setItem("gp_last_producto", selectedProducto)
-}, [selectedProvincia, selectedMunicipio, selectedProducto])
+    if (selectedProvincia)
+      localStorage.setItem("gp_last_provincia", selectedProvincia);
+    if (selectedMunicipio) {
+      localStorage.setItem("gp_last_municipio", selectedMunicipio);
+    } else {
+      localStorage.removeItem("gp_last_municipio");
+    }
+    localStorage.setItem("gp_last_producto", selectedProducto);
+  }, [selectedProvincia, selectedMunicipio, selectedProducto]);
 
-useEffect(() => {
-  const provincia = localStorage.getItem("gp_last_provincia")
-  const municipio = localStorage.getItem("gp_last_municipio")
-  const producto = localStorage.getItem("gp_last_producto")
+  useEffect(() => {
+    const provincia = localStorage.getItem("gp_last_provincia");
+    const municipio = localStorage.getItem("gp_last_municipio");
+    const producto = localStorage.getItem("gp_last_producto");
 
-  if (producto) setSelectedProducto(producto)
-  if (!provincia) return
+    if (producto) setSelectedProducto(producto);
+    if (!provincia) return;
 
-  // Restaurar provincia y cargar sus municipios
-  setSelectedProvincia(provincia)
-  setLoadingMunicipios(true)
+    // Restaurar provincia y cargar sus municipios
+    setSelectedProvincia(provincia);
+    setLoadingMunicipios(true);
 
-  fetch(
-    `https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/Listados/MunicipiosPorProvincia/${provincia}`
-  )
-    .then(r => r.json())
-    .then((data: Municipio[]) => {
-      const sorted = [...data].sort((a, b) => a.Municipio.localeCompare(b.Municipio, 'es'))
-      setMunicipios(sorted)
-      // Restaurar municipio solo después de que estén cargados los municipios
-      if (municipio) setSelectedMunicipio(municipio)
-    })
-    .catch(() => {})
-    .finally(() => setLoadingMunicipios(false))
-}, [])
+    fetch(
+      `https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/Listados/MunicipiosPorProvincia/${provincia}`,
+    )
+      .then((r) => r.json())
+      .then((data: Municipio[]) => {
+        const sorted = [...data].sort((a, b) =>
+          a.Municipio.localeCompare(b.Municipio, "es"),
+        );
+        setMunicipios(sorted);
+        // Restaurar municipio solo después de que estén cargados los municipios
+        if (municipio) setSelectedMunicipio(municipio);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMunicipios(false));
+  }, []);
 
   // useEffect de guardado — persiste favoritos en localStorage
   useEffect(() => {
@@ -515,8 +535,21 @@ useEffect(() => {
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
     window.open(mapsUrl, "_blank");
   };
-  const [loadingFavoritos, setLoadingFavoritos] = useState(false);
 
+  const compartirWhatsApp = (
+    nombre: string,
+    direccion: string,
+    precio: number,
+    combustible: string,
+    municipio: string,
+  ) => {
+    const municipioNombre =
+      municipios.find((m) => m.IDMunicipio === municipio)?.Municipio ?? "";
+    const texto = `⛽ *${nombre}*\n📍 ${direccion} (${toTitleCase(municipioNombre)})\n💰 ${combustible}: *${precio.toFixed(3)}€/L*\n\n🔍 Compara precios en: https://gaso-precios-plus.vercel.app`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
+  };
+
+  const [loadingFavoritos, setLoadingFavoritos] = useState(false);
 
   // toggleFavorito — guardar el municipioId al añadir favorita
   const toggleFavorito = (g: GasolineraMunicipio) => {
@@ -876,10 +909,10 @@ useEffect(() => {
                 </SelectTrigger>
                 <SelectContent>
                   {provincias.map((p) => (
-  <SelectItem key={p.IDPovincia} value={p.IDPovincia}>
-    {toTitleCase(p.Provincia)}
-  </SelectItem>
-))}
+                    <SelectItem key={p.IDPovincia} value={p.IDPovincia}>
+                      {toTitleCase(p.Provincia)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Popover open={municipioOpen} onOpenChange={setMunicipioOpen}>
@@ -895,8 +928,11 @@ useEffect(() => {
                       {loadingMunicipios
                         ? "Cargando municipios..."
                         : selectedMunicipio
-                          ? (toTitleCase(municipios.find(m => m.IDMunicipio === selectedMunicipio)?.Municipio ?? "")
-)
+                          ? toTitleCase(
+                              municipios.find(
+                                (m) => m.IDMunicipio === selectedMunicipio,
+                              )?.Municipio ?? "",
+                            )
                           : "Elige un municipio..."}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -917,9 +953,10 @@ useEffect(() => {
                           <CommandItem
                             key={m.IDMunicipio}
                             value={m.Municipio}
-                            
                             onSelect={() => {
-                               {toTitleCase(m.Municipio)}
+                              {
+                                toTitleCase(m.Municipio);
+                              }
                               setSelectedMunicipio(m.IDMunicipio);
                               setMunicipioOpen(false);
                             }}
@@ -1286,6 +1323,30 @@ useEffect(() => {
                               >
                                 <MapPin className="h-3 w-3 mr-1" />
                                 Ver en Google Maps
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() =>
+                                  compartirWhatsApp(
+                                    g.nombre,
+                                    g.direccion,
+                                    selected.precio,
+                                    selected.nombre,
+                                    selectedMunicipio,
+                                  )
+                                }
+                              >
+                                <svg
+                                  className="h-3 w-3 mr-1"
+                                  viewBox="0 0 24 24"
+                                  fill="currentColor"
+                                >
+                                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.115.549 4.103 1.508 5.83L.057 23.077a.75.75 0 0 0 .866.866l5.247-1.451A11.934 11.934 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.652-.52-5.163-1.426l-.371-.22-3.844 1.063 1.029-3.948-.242-.393A9.956 9.956 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
+                                </svg>
+                                Compartir
                               </Button>
                             </div>
                           </div>
