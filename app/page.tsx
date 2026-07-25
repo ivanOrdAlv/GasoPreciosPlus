@@ -81,6 +81,31 @@ interface GasolineraMunicipio {
   municipioId?: string;
 }
 
+function toTitleCase(str: string): string {
+  // Palabras que deben ir en minúscula (preposiciones y artículos)
+  const minusculas = new Set([
+    "de", "del", "la", "las", "los", "el", "y", "e", "o", "u",
+    "a", "en", "con", "por", "para", "al", "las", "un", "una"
+  ])
+
+  return str
+    .toLowerCase()
+    .split(" ")
+    .map((palabra, index) => {
+      // La primera palabra siempre en mayúscula
+      if (index === 0) return capitalizar(palabra)
+      // El resto, solo si no está en la lista de minúsculas
+      return minusculas.has(palabra) ? palabra : capitalizar(palabra)
+    })
+    .join(" ")
+}
+
+function capitalizar(palabra: string): string {
+  if (!palabra) return ""
+  // Maneja casos como "ÁLAVA" → "Álava" correctamente con tildes
+  return palabra.charAt(0).toUpperCase() + palabra.slice(1)
+}
+
 function RepostajeCalculator({ precioPorLitro }: { precioPorLitro: number }) {
   const [litros, setLitros] = useState<string>("");
   const [total, setTotal] = useState<number | null>(null);
@@ -806,10 +831,10 @@ export default function GasoPrecios() {
                 </SelectTrigger>
                 <SelectContent>
                   {provincias.map((p) => (
-                    <SelectItem key={p.IDPovincia} value={p.IDPovincia}>
-                      {p.Provincia}
-                    </SelectItem>
-                  ))}
+  <SelectItem key={p.IDPovincia} value={p.IDPovincia}>
+    {toTitleCase(p.Provincia)}
+  </SelectItem>
+))}
                 </SelectContent>
               </Select>
               <Popover open={municipioOpen} onOpenChange={setMunicipioOpen}>
@@ -825,9 +850,8 @@ export default function GasoPrecios() {
                       {loadingMunicipios
                         ? "Cargando municipios..."
                         : selectedMunicipio
-                          ? (municipios.find(
-                              (m) => m.IDMunicipio === selectedMunicipio,
-                            )?.Municipio ?? "Elige un municipio...")
+                          ? (toTitleCase(municipios.find(m => m.IDMunicipio === selectedMunicipio)?.Municipio ?? "")
+)
                           : "Elige un municipio..."}
                     </span>
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -848,7 +872,9 @@ export default function GasoPrecios() {
                           <CommandItem
                             key={m.IDMunicipio}
                             value={m.Municipio}
+                            
                             onSelect={() => {
+                               {toTitleCase(m.Municipio)}
                               setSelectedMunicipio(m.IDMunicipio);
                               setMunicipioOpen(false);
                             }}
