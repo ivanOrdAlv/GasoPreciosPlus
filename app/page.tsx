@@ -221,6 +221,42 @@ export default function GasoPrecios() {
     }
   }, []);
 
+useEffect(() => {
+  if (selectedProvincia) localStorage.setItem("gp_last_provincia", selectedProvincia)
+  if (selectedMunicipio) {
+    localStorage.setItem("gp_last_municipio", selectedMunicipio)
+  } else {
+    localStorage.removeItem("gp_last_municipio")
+  }
+  localStorage.setItem("gp_last_producto", selectedProducto)
+}, [selectedProvincia, selectedMunicipio, selectedProducto])
+
+useEffect(() => {
+  const provincia = localStorage.getItem("gp_last_provincia")
+  const municipio = localStorage.getItem("gp_last_municipio")
+  const producto = localStorage.getItem("gp_last_producto")
+
+  if (producto) setSelectedProducto(producto)
+  if (!provincia) return
+
+  // Restaurar provincia y cargar sus municipios
+  setSelectedProvincia(provincia)
+  setLoadingMunicipios(true)
+
+  fetch(
+    `https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/Listados/MunicipiosPorProvincia/${provincia}`
+  )
+    .then(r => r.json())
+    .then((data: Municipio[]) => {
+      const sorted = [...data].sort((a, b) => a.Municipio.localeCompare(b.Municipio, 'es'))
+      setMunicipios(sorted)
+      // Restaurar municipio solo después de que estén cargados los municipios
+      if (municipio) setSelectedMunicipio(municipio)
+    })
+    .catch(() => {})
+    .finally(() => setLoadingMunicipios(false))
+}, [])
+
   // useEffect de guardado — persiste favoritos en localStorage
   useEffect(() => {
     localStorage.setItem("gp_favoritos", JSON.stringify(favoritos));
