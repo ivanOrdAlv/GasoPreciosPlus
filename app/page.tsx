@@ -27,6 +27,22 @@ import {
   Star,
 } from "lucide-react";
 
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+
 import { useTheme } from "next-themes";
 
 interface Gasolinera {
@@ -136,6 +152,7 @@ export default function GasoPrecios() {
   const [favoritos, setFavoritos] = useState<GasolineraMunicipio[]>([]);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const { theme, setTheme } = useTheme();
+  const [municipioOpen, setMunicipioOpen] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem("gp_colorblind");
@@ -795,30 +812,63 @@ export default function GasoPrecios() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select
-                value={selectedMunicipio}
-                onValueChange={setSelectedMunicipio}
-                disabled={!selectedProvincia || loadingMunicipios}
-              >
-                <SelectTrigger
-                  className={`w-full sm:max-w-lg ${interactiveHover}`}
-                >
-                  <SelectValue
-                    placeholder={
-                      loadingMunicipios
+              <Popover open={municipioOpen} onOpenChange={setMunicipioOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={municipioOpen}
+                    disabled={!selectedProvincia || loadingMunicipios}
+                    className={`w-full sm:max-w-lg justify-between font-normal ${interactiveHover}`}
+                  >
+                    <span className="truncate">
+                      {loadingMunicipios
                         ? "Cargando municipios..."
-                        : "Elige un municipio..."
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {municipios.map((m) => (
-                    <SelectItem key={m.IDMunicipio} value={m.IDMunicipio}>
-                      {m.Municipio}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                        : selectedMunicipio
+                          ? (municipios.find(
+                              (m) => m.IDMunicipio === selectedMunicipio,
+                            )?.Municipio ?? "Elige un municipio...")
+                          : "Elige un municipio..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-full sm:max-w-lg p-0"
+                  align="start"
+                >
+                  <Command>
+                    <CommandInput placeholder="Buscar municipio..." />
+                    <CommandList>
+                      <CommandEmpty>
+                        No se encontró ningún municipio.
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {municipios.map((m) => (
+                          <CommandItem
+                            key={m.IDMunicipio}
+                            value={m.Municipio}
+                            onSelect={() => {
+                              setSelectedMunicipio(m.IDMunicipio);
+                              setMunicipioOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedMunicipio === m.IDMunicipio
+                                  ? "opacity-100"
+                                  : "opacity-0",
+                              )}
+                            />
+                            {m.Municipio}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <Select
                 value={selectedProducto}
                 onValueChange={setSelectedProducto}
