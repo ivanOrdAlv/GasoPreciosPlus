@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Card,
   CardContent,
@@ -178,6 +178,7 @@ export default function GasoPrecios() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const { theme, setTheme } = useTheme();
   const [municipioOpen, setMunicipioOpen] = useState(false);
+const isFirstRender = useRef(true);
 
   useEffect(() => {
     const raw = localStorage.getItem("gp_colorblind");
@@ -222,6 +223,12 @@ export default function GasoPrecios() {
   }, []);
 
 useEffect(() => {
+  // En el primer render los valores están vacíos — saltamos el guardado
+  if (isFirstRender.current) {
+    isFirstRender.current = false
+    return
+  }
+
   if (selectedProvincia) localStorage.setItem("gp_last_provincia", selectedProvincia)
   if (selectedMunicipio) {
     localStorage.setItem("gp_last_municipio", selectedMunicipio)
@@ -509,6 +516,8 @@ useEffect(() => {
     window.open(mapsUrl, "_blank");
   };
   const [loadingFavoritos, setLoadingFavoritos] = useState(false);
+
+
   // toggleFavorito — guardar el municipioId al añadir favorita
   const toggleFavorito = (g: GasolineraMunicipio) => {
     setFavoritos((prev) => {
