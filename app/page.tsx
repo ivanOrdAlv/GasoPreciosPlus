@@ -123,6 +123,24 @@ function capitalizar(palabra: string): string {
   return palabra.charAt(0).toUpperCase() + palabra.slice(1);
 }
 
+function calcularDistancia(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
 function RepostajeCalculator({ precioPorLitro }: { precioPorLitro: number }) {
   const [litros, setLitros] = useState<string>("");
   const [total, setTotal] = useState<number | null>(null);
@@ -196,6 +214,15 @@ export default function GasoPrecios() {
   const { theme, setTheme } = useTheme();
   const [municipioOpen, setMunicipioOpen] = useState(false);
   const isFirstRender = useRef(true);
+  const [ubicacionUsuario, setUbicacionUsuario] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
+  const [loadingUbicacion, setLoadingUbicacion] = useState(false);
+  const [gasolinerasCercanas, setGasolinerasCercanas] = useState<
+    GasolineraMunicipio[]
+  >([]);
+  const RADIO_KM = 10;
 
   useEffect(() => {
     const raw = localStorage.getItem("gp_colorblind");
@@ -486,6 +513,116 @@ export default function GasoPrecios() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const buscarGasolinerasCercanas = () => {
+    setLoadingUbicacion(true);
+    setError(null);
+
+    if (!navigator.geolocation) {
+      setError("Tu navegador no soporta geolocalización.");
+      setLoadingUbicacion(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (posicion) => {
+        const { latitude: lat, longitude: lng } = posicion.coords;
+        setUbicacionUsuario({ lat, lng });
+
+        try {
+          // Cogemos la provincia seleccionada para buscar en ella,
+          // o si no hay provincia, buscamos en toda España (endpoint general)
+          const url = selectedProvincia
+            ? `https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/FiltroProvincia/${selectedProvincia}`
+            : `https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/`;
+
+          const res = await fetch(url);
+          const data = await res.json();
+
+          const lista: GasolineraMunicipio[] = [];
+
+          data.ListaEESSPrecio?.forEach((eess: any) => {
+            const latG = parseFloat((eess["Latitud"] ?? "").replace(",", "."));
+            const lngG = parseFloat(
+              (eess["Longitud (WGS84)"] ?? "").replace(",", "."),
+            );
+            if (!isFinite(latG) || !isFinite(lngG)) return;
+
+            const distancia = calcularDistancia(lat, lng, latG, lngG);
+            if (distancia > RADIO_KM) return;
+
+            const idRaw =
+              eess["IDEESS"] ??
+              eess["IDEEESS"] ??
+              eess["IdEESS"] ??
+              eess["ID"] ??
+              eess["Id"];
+            const id =
+              idRaw != null && `${idRaw}`.trim() ? `${idRaw}`.trim() : "";
+
+            const combustibles: CombustibleDisponible[] = productos
+              .map((p) => {
+                const campo = PRODUCTO_A_CAMPO_API[p.id];
+                const precio = campo ? parsePrecio(eess[campo]) : null;
+                if (precio == null) return null;
+                return { id: p.id, nombre: p.nombre, precio };
+              })
+              .filter(Boolean) as CombustibleDisponible[];
+
+            if (combustibles.length === 0) return;
+
+            lista.push({
+              id: id || `${eess["Rótulo"]}__${eess["Dirección"]}`,
+              direccion: eess["Dirección"],
+              nombre: eess["Rótulo"] || "Sin nombre",
+              latitud: eess["Latitud"],
+              longitud: eess["Longitud (WGS84)"],
+              horario: eess["Horario"],
+              combustibles,
+              distancia, // lo usamos para ordenar
+            } as GasolineraMunicipio & { distancia: number });
+          });
+
+          // Ordenar por distancia
+          lista.sort(
+            (a, b) =>
+              calcularDistancia(
+                lat,
+                lng,
+                parseFloat(a.latitud.replace(",", ".")),
+                parseFloat(a.longitud.replace(",", ".")),
+              ) -
+              calcularDistancia(
+                lat,
+                lng,
+                parseFloat(b.latitud.replace(",", ".")),
+                parseFloat(b.longitud.replace(",", ".")),
+              ),
+          );
+
+          setGasolinerasCercanas(lista);
+          setGasolineras([]);
+          setGasolinerasMunicipio([]);
+
+          if (lista.length === 0) {
+            setError(
+              `No se encontraron gasolineras en un radio de ${RADIO_KM} km.`,
+            );
+          }
+        } catch {
+          setError("No se pudieron cargar las gasolineras cercanas.");
+        } finally {
+          setLoadingUbicacion(false);
+        }
+      },
+      () => {
+        setError(
+          "No se pudo obtener tu ubicación. Comprueba los permisos del navegador.",
+        );
+        setLoadingUbicacion(false);
+      },
+    );
   };
 
   const gasolinerasMunicipioOrdenadas = useMemo(() => {
@@ -1014,6 +1151,25 @@ export default function GasoPrecios() {
                     </>
                   )}
                 </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={buscarGasolinerasCercanas}
+                  disabled={loadingUbicacion}
+                  className={`w-full sm:w-auto ${interactiveHover}`}
+                >
+                  {loadingUbicacion ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                      Buscando...
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="mr-2 h-4 w-4" /> Gasolineras cercanas (
+                      {RADIO_KM} km)
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -1136,6 +1292,145 @@ export default function GasoPrecios() {
           </>
         )}
         */}
+
+        {/* Listado de gasolineras cercanas */}
+        {gasolinerasCercanas.length > 0 && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {gasolinerasCercanas.length} gasolineras encontradas en un radio
+              de {RADIO_KM} km
+              {ubicacionUsuario && (
+                <span className="ml-1 text-xs">· ordenadas por distancia</span>
+              )}
+            </p>
+            {gasolinerasCercanas.map((g, index) => {
+              const selected =
+                g.combustibles.find((c) => c.id === selectedProducto) ??
+                g.combustibles[0];
+              const distancia = calcularDistancia(
+                ubicacionUsuario!.lat,
+                ubicacionUsuario!.lng,
+                parseFloat(g.latitud.replace(",", ".")),
+                parseFloat(g.longitud.replace(",", ".")),
+              );
+              return (
+                <div
+                  key={g.id}
+                  className={`p-4 rounded-lg border-2 ${getPriceColor(selected.precio, index, gasolinerasCercanas.length)}`}
+                >
+                  <div
+                    key={`${g.id}__fav__${index}`}
+                    className={`p-4 rounded-lg border-2 transition-all hover:shadow-md bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold truncate">{g.nombre}</h3>
+                          <span
+                            className={`text-xs px-2 py-1 rounded ${isGasolineraAbierta(g.horario) ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"}`}
+                          >
+                            {isGasolineraAbierta(g.horario)
+                              ? "Abierto"
+                              : "Cerrado"}
+                          </span>
+                        </div>
+                        <p className="text-sm opacity-90">
+                          <MapPin className="inline h-3 w-3 mr-1" />
+                          {g.direccion}
+                        </p>
+                        <p className="text-sm opacity-90">{g.horario}</p>
+
+                        <div className="mt-3">
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Combustibles disponibles
+                          </p>
+                          <div className="space-y-1">
+                            {g.combustibles.map((c) => (
+                              <div
+                                key={`${g.id}__${c.id}__fav`}
+                                className={`flex items-center justify-between text-xs ${
+                                  c.id === selected.id
+                                    ? "text-foreground font-medium"
+                                    : "text-muted-foreground"
+                                }`}
+                              >
+                                <span className="truncate pr-3">
+                                  {c.nombre}
+                                </span>
+                                <span>{c.precio.toFixed(3)}€</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <RepostajeCalculator precioPorLitro={selected.precio} />
+
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => toggleFavorito(g)}
+                          >
+                            <Star className="h-3 w-3 mr-1 fill-current" />
+                            Quitar favorito
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() =>
+                              abrirEnMaps(g.latitud, g.longitud, g.nombre)
+                            }
+                          >
+                            <MapPin className="h-3 w-3 mr-1" />
+                            Ver en Google Maps
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() =>
+                              compartirWhatsApp(
+                                g.nombre,
+                                g.direccion,
+                                selected.precio,
+                                selected.nombre,
+                                selectedMunicipio,
+                              )
+                            }
+                          >
+                            <svg
+                              className="h-3 w-3 mr-1"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                            >
+                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.115.549 4.103 1.508 5.83L.057 23.077a.75.75 0 0 0 .866.866l5.247-1.451A11.934 11.934 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.652-.52-5.163-1.426l-.371-.22-3.844 1.063 1.029-3.948-.242-.393A9.956 9.956 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
+                            </svg>
+                            Compartir
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-2xl font-bold">
+                          {selected.precio.toFixed(3)}€
+                        </div>
+                        <div className="text-xs opacity-75">
+                          {selected.nombre}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <span className="text-xs opacity-75">
+                    {distancia.toFixed(1)} km
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {gasolinerasMunicipioOrdenadas.length > 0 && (
           <>
@@ -1506,7 +1801,7 @@ export default function GasoPrecios() {
                                 <MapPin className="h-3 w-3 mr-1" />
                                 Ver en Google Maps
                               </Button>
-                               <Button
+                              <Button
                                 variant="ghost"
                                 size="sm"
                                 className="h-7 text-xs"
