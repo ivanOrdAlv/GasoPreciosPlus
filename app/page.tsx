@@ -448,6 +448,7 @@ export default function GasoPrecios() {
 
     setLoading(true);
     setError(null);
+    setGasolinerasCercanas([]); // ← añadir esta línea
 
     try {
       const response = await fetch(
