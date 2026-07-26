@@ -20,6 +20,8 @@
 - Filtra gasolineras por **provincia** — todas las provincias de España disponibles
 - **Buscador de municipio** con filtrado en tiempo real: escribe las primeras letras y encuentra tu municipio al instante
 - Selecciona el **tipo de combustible**: Gasolina 95 E5, Gasolina 98, Gasóleo A, Gasóleo Premium, GLP, GNC, GNL, Hidrógeno, AdBlue y más
+- Esta aplicación, es capaz de **guardar tu última búsqueda**, así, nada más entrar en la aplicación, sólo tendrás que darle al botón de **Buscar precios**.
+- También incluye un botón para poder buscar **gasolineras cercanas** en torno a **10 km** gracias a la geolocalización.
 
 ### 🏆 Comparativa de precios
 - Muestra destacadas la **gasolinera más barata** y la **más cara** del municipio para el combustible seleccionado
@@ -34,6 +36,7 @@
 - **Horario** con indicador en tiempo real de si la gasolinera está **abierta o cerrada** ahora mismo
 - Visualiza los **precios de todos los combustibles** disponibles en cada gasolinera
 - Botón de **ubicación en Google Maps** para llegar directamente
+- Botón de **compartir por WhatsApp** para enviar las mejores gasolineras, o tus gasolineras preferidas, a tus contactos.
 - **Calculadora de repostaje**: introduce los litros que vas a echar y calcula al instante cuánto te va a costar
 
 ### ⭐ Gasolineras favoritas
