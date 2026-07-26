@@ -680,10 +680,16 @@ export default function GasoPrecios() {
     precio: number,
     combustible: string,
     municipio: string,
+    latitud: string,
+    longitud: string,
   ) => {
     const municipioNombre =
       municipios.find((m) => m.IDMunicipio === municipio)?.Municipio ?? "";
-    const texto = `⛽ *${nombre}*\n📍 ${direccion} (${toTitleCase(municipioNombre)})\n💰 ${combustible}: *${precio.toFixed(3)}€/L*\n\n🔍 Compara precios en: https://gaso-precios-plus.vercel.app`;
+    const lat = latitud.replace(",", ".");
+    const lng = longitud.replace(",", ".");
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
+    const texto = `⛽ *${nombre}*\n📍 ${direccion} (${toTitleCase(municipioNombre)})\n💰 ${combustible}: *${precio.toFixed(3)}€/L*\n\n🗺️ Ubicación: ${mapsUrl}\n\n🔍 Compara precios en: https://gaso-precios-plus.vercel.app`;
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, "_blank");
   };
 
@@ -1411,6 +1417,8 @@ export default function GasoPrecios() {
                                   selected.precio,
                                   selected.nombre,
                                   selectedMunicipio,
+                                  g.latitud, // ← nuevo
+                                  g.longitud,
                                 )
                               }
                             >
@@ -1641,6 +1649,8 @@ export default function GasoPrecios() {
                                     selected.precio,
                                     selected.nombre,
                                     selectedMunicipio,
+                                    g.latitud, // ← nuevo
+                                    g.longitud, // ← nuevo
                                   )
                                 }
                               >
@@ -1823,6 +1833,8 @@ export default function GasoPrecios() {
                                     selected.precio,
                                     selected.nombre,
                                     selectedMunicipio,
+                                    g.latitud, // ← nuevo
+                                    g.longitud, // ← nuevo
                                   )
                                 }
                               >
