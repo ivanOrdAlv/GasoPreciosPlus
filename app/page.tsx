@@ -1155,7 +1155,10 @@ export default function GasoPrecios() {
                 <Button
                   variant="outline"
                   onClick={buscarGasolinerasCercanas}
-                  disabled={loadingUbicacion}
+                  disabled={loadingUbicacion || !selectedProvincia}
+                  title={
+                    !selectedProvincia ? "Selecciona una provincia primero" : ""
+                  }
                   className={`w-full sm:w-auto ${interactiveHover}`}
                 >
                   {loadingUbicacion ? (
@@ -1295,141 +1298,148 @@ export default function GasoPrecios() {
 
         {/* Listado de gasolineras cercanas */}
         {gasolinerasCercanas.length > 0 && (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              {gasolinerasCercanas.length} gasolineras encontradas en un radio
-              de {RADIO_KM} km
-              {ubicacionUsuario && (
-                <span className="ml-1 text-xs">· ordenadas por distancia</span>
-              )}
-            </p>
-            {gasolinerasCercanas.map((g, index) => {
-              const selected =
-                g.combustibles.find((c) => c.id === selectedProducto) ??
-                g.combustibles[0];
-              const distancia = calcularDistancia(
-                ubicacionUsuario!.lat,
-                ubicacionUsuario!.lng,
-                parseFloat(g.latitud.replace(",", ".")),
-                parseFloat(g.longitud.replace(",", ".")),
-              );
-              return (
-                <div
-                  key={g.id}
-                  className={`p-4 rounded-lg border-2 ${getPriceColor(selected.precio, index, gasolinerasCercanas.length)}`}
-                >
-                  <div
-                    key={`${g.id}__fav__${index}`}
-                    className={`p-4 rounded-lg border-2 transition-all hover:shadow-md bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold truncate">{g.nombre}</h3>
-                          <span
-                            className={`text-xs px-2 py-1 rounded ${isGasolineraAbierta(g.horario) ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"}`}
-                          >
-                            {isGasolineraAbierta(g.horario)
-                              ? "Abierto"
-                              : "Cerrado"}
-                          </span>
-                        </div>
-                        <p className="text-sm opacity-90">
-                          <MapPin className="inline h-3 w-3 mr-1" />
-                          {g.direccion}
-                        </p>
-                        <p className="text-sm opacity-90">{g.horario}</p>
+          <Card className="mb-8 border-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Gasolineras cercanas
+              </CardTitle>
+              <CardDescription>
+                {gasolinerasCercanas.length} gasolineras encontradas en un radio
+                de {RADIO_KM} km · ordenadas por distancia
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {gasolinerasCercanas.map((g, index) => {
+                  const selected =
+                    g.combustibles.find((c) => c.id === selectedProducto) ??
+                    g.combustibles[0];
+                  const distancia = calcularDistancia(
+                    ubicacionUsuario!.lat,
+                    ubicacionUsuario!.lng,
+                    parseFloat(g.latitud.replace(",", ".")),
+                    parseFloat(g.longitud.replace(",", ".")),
+                  );
+                  const esFavorito = favoritos.some((f) => f.id === g.id);
 
-                        <div className="mt-3">
-                          <p className="text-xs text-muted-foreground mb-2">
-                            Combustibles disponibles
+                  return (
+                    <div
+                      key={g.id}
+                      className={`p-4 rounded-lg border-2 transition-all hover:shadow-md ${getPriceColor(selected.precio, index, gasolinerasCercanas.length)}`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 className="font-semibold truncate">
+                              {g.nombre}
+                            </h3>
+                            <span
+                              className={`text-xs px-2 py-1 rounded ${isGasolineraAbierta(g.horario) ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"}`}
+                            >
+                              {isGasolineraAbierta(g.horario)
+                                ? "Abierto"
+                                : "Cerrado"}
+                            </span>
+                            <span className="text-xs opacity-60">
+                              📍 {distancia.toFixed(1)} km
+                            </span>
+                          </div>
+                          <p className="text-sm opacity-90">
+                            <MapPin className="inline h-3 w-3 mr-1" />
+                            {g.direccion}
                           </p>
-                          <div className="space-y-1">
-                            {g.combustibles.map((c) => (
-                              <div
-                                key={`${g.id}__${c.id}__fav`}
-                                className={`flex items-center justify-between text-xs ${
-                                  c.id === selected.id
-                                    ? "text-foreground font-medium"
-                                    : "text-muted-foreground"
-                                }`}
+                          <p className="text-sm opacity-90">{g.horario}</p>
+
+                          <div className="mt-3">
+                            <p className="text-xs text-muted-foreground mb-2">
+                              Combustibles disponibles
+                            </p>
+                            <div className="space-y-1">
+                              {g.combustibles.map((c) => (
+                                <div
+                                  key={`${g.id}__${c.id}__cercana`}
+                                  className={`flex items-center justify-between text-xs ${c.id === selected.id ? "text-foreground font-medium" : "text-muted-foreground"}`}
+                                >
+                                  <span className="truncate pr-3">
+                                    {c.nombre}
+                                  </span>
+                                  <span>{c.precio.toFixed(3)}€</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <RepostajeCalculator
+                            precioPorLitro={selected.precio}
+                          />
+
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <Button
+                              variant={esFavorito ? "default" : "outline"}
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => toggleFavorito(g)}
+                            >
+                              <Star
+                                className={`h-3 w-3 mr-1 ${esFavorito ? "fill-current" : ""}`}
+                              />
+                              {esFavorito
+                                ? "Quitar favorito"
+                                : "Añadir favorito"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() =>
+                                abrirEnMaps(g.latitud, g.longitud, g.nombre)
+                              }
+                            >
+                              <MapPin className="h-3 w-3 mr-1" />
+                              Ver en Google Maps
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() =>
+                                compartirWhatsApp(
+                                  g.nombre,
+                                  g.direccion,
+                                  selected.precio,
+                                  selected.nombre,
+                                  selectedMunicipio,
+                                )
+                              }
+                            >
+                              <svg
+                                className="h-3 w-3 mr-1"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
                               >
-                                <span className="truncate pr-3">
-                                  {c.nombre}
-                                </span>
-                                <span>{c.precio.toFixed(3)}€</span>
-                              </div>
-                            ))}
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.115.549 4.103 1.508 5.83L.057 23.077a.75.75 0 0 0 .866.866l5.247-1.451A11.934 11.934 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.652-.52-5.163-1.426l-.371-.22-3.844 1.063 1.029-3.948-.242-.393A9.956 9.956 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
+                              </svg>
+                              Compartir
+                            </Button>
                           </div>
                         </div>
-
-                        <RepostajeCalculator precioPorLitro={selected.precio} />
-
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          <Button
-                            variant="default"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() => toggleFavorito(g)}
-                          >
-                            <Star className="h-3 w-3 mr-1 fill-current" />
-                            Quitar favorito
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() =>
-                              abrirEnMaps(g.latitud, g.longitud, g.nombre)
-                            }
-                          >
-                            <MapPin className="h-3 w-3 mr-1" />
-                            Ver en Google Maps
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs"
-                            onClick={() =>
-                              compartirWhatsApp(
-                                g.nombre,
-                                g.direccion,
-                                selected.precio,
-                                selected.nombre,
-                                selectedMunicipio,
-                              )
-                            }
-                          >
-                            <svg
-                              className="h-3 w-3 mr-1"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                            >
-                              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
-                              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.115.549 4.103 1.508 5.83L.057 23.077a.75.75 0 0 0 .866.866l5.247-1.451A11.934 11.934 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.885 0-3.652-.52-5.163-1.426l-.371-.22-3.844 1.063 1.029-3.948-.242-.393A9.956 9.956 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
-                            </svg>
-                            Compartir
-                          </Button>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <div className="text-2xl font-bold">
-                          {selected.precio.toFixed(3)}€
-                        </div>
-                        <div className="text-xs opacity-75">
-                          {selected.nombre}
+                        <div className="text-right shrink-0">
+                          <div className="text-2xl font-bold">
+                            {selected.precio.toFixed(3)}€
+                          </div>
+                          <div className="text-xs opacity-75">
+                            {selected.nombre}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  <span className="text-xs opacity-75">
-                    {distancia.toFixed(1)} km
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {gasolinerasMunicipioOrdenadas.length > 0 && (
